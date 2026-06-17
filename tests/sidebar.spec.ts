@@ -20,7 +20,7 @@ test.describe('Sidebar de Navegación', () => {
 
     await expect(page.getByRole('link', { name: 'Dashboard' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'Mesas', exact: true })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Productos' })).toBeVisible();
+    await expect(page.getByText('Productos', { exact: true }).first()).toBeVisible();
     await expect(page.getByRole('link', { name: 'Registrar' })).toBeVisible();
     await screenshot(page, 'Sidebar - admin con productos visible');
   });

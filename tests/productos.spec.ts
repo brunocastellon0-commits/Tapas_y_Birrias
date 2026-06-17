@@ -9,7 +9,7 @@ test.describe('Productos', () => {
   });
 
   test('Renderiza página con título y tabs', async ({ page }) => {
-    await expect(page.getByText('Productos')).toBeVisible();
+    await expect(page.getByText('Productos', { exact: true }).first()).toBeVisible();
     await expect(page.getByText('Inventario')).toBeVisible();
     await expect(page.getByText('Categorías')).toBeVisible();
     await expect(page.getByText('Reportes')).toBeVisible();
@@ -49,7 +49,7 @@ test.describe('Productos', () => {
   });
 
   test('Navegación a tab Categorías', async ({ page }) => {
-    await page.getByText('Categorías').click();
+    await page.getByRole('button', { name: 'Categorías' }).click();
     await page.waitForTimeout(500);
     await screenshot(page, 'Productos - categorías tab');
   });
@@ -83,8 +83,8 @@ test.describe('Productos - Sin permisos de admin', () => {
     });
 
     await page.goto('/productos');
-    await page.waitForTimeout(3000);
-    await expect(page).toHaveURL(/dashboard/);
+    await page.waitForURL('**/dashboard**', { timeout: 10000 });
+    await expect(page).toHaveURL(/.*dashboard/);
     await screenshot(page, 'Productos - redirect a dashboard por no ser admin');
   });
 });
