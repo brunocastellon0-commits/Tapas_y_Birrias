@@ -29,7 +29,10 @@ export const MOCK_ADMIN_USER = {
   user_metadata: { nombre: 'Admin', apellido: 'User' },
 };
 
-export async function mockSupabaseTables(page: Page) {
+export async function mockSupabaseTables(page: Page, customData?: {
+  usuarios?: any[];
+  cargos?: any[];
+}) {
   await page.route('**/rest/v1/**', async (route) => {
     const url = route.request().url();
     if (url.includes('mesas')) {
@@ -102,13 +105,13 @@ export async function mockSupabaseTables(page: Page) {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify([{ id: 'mock-admin-id-1', cargo_id: 1, sucursal_id: 1 }]),
+        body: JSON.stringify(customData?.usuarios ?? [{ id: 'mock-admin-id-1', cargo_id: 1, sucursal_id: 1 }]),
       });
     } else if (url.includes('cargos')) {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify([{ id: 1, nombre: 'Administrador' }]),
+        body: JSON.stringify(customData?.cargos ?? [{ id: 1, nombre: 'Administrador' }]),
       });
     } else if (url.includes('aperturas_caja')) {
       await route.fulfill({

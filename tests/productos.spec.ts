@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { screenshot, loginAsAdmin } from './helpers';
+import { screenshot, loginAsAdmin, setTestBypass, mockSupabaseAuth, mockSupabaseTables, submitForm } from './helpers';
 
 test.describe('Productos', () => {
   test.beforeEach(async ({ page }) => {
@@ -10,7 +10,7 @@ test.describe('Productos', () => {
 
   test('Renderiza página con título y tabs', async ({ page }) => {
     await expect(page.getByText('Productos', { exact: true }).first()).toBeVisible();
-    await expect(page.getByText('Inventario')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Inventario' })).toBeVisible();
     await expect(page.getByText('Categorías')).toBeVisible();
     await expect(page.getByText('Reportes')).toBeVisible();
     await screenshot(page, 'Productos - vista completa');
@@ -68,23 +68,20 @@ test.describe('Productos', () => {
 
 test.describe('Productos - Sin permisos de admin', () => {
   test('Usuario sin rol admin es redirigido a dashboard', async ({ page }) => {
-    await loginAsAdmin(page);
-    await page.route('**/rest/v1/usuarios*', async (route) => {
-      await route.fulfill({
-        status: 200, contentType: 'application/json',
-        body: JSON.stringify([{ id: 'mock-admin-id-1', cargo_id: 2, sucursal_id: 1 }]),
-      });
+    await setTestBypass(page);
+    await mockSupabaseAuth(page);
+    await mockSupabaseTables(page, {
+      usuarios: [{ id: 'mock-admin-id-1', cargo_id: 2, sucursal_id: 1 }],
+      cargos: [{ id: 2, nombre: 'Mesero' }],
     });
-    await page.route('**/rest/v1/cargos*', async (route) => {
-      await route.fulfill({
-        status: 200, contentType: 'application/json',
-        body: JSON.stringify([{ id: 2, nombre: 'Mesero' }]),
-      });
-    });
-
+    await page.goto('/login');
+    await page.locator('#identifier').fill('admin@test.com');
+    await page.locator('#password').fill('password123');
+    await submitForm(page);
+    await expect(page).toHaveURL(/dashboard/, { timeout: 15000 });
     await page.goto('/productos');
-    await page.waitForURL('**/dashboard**', { timeout: 10000 });
-    await expect(page).toHaveURL(/.*dashboard/);
+    await page.waitForTimeout(3000);
+    await expect(page).toHaveURL(/dashboard/);
     await screenshot(page, 'Productos - redirect a dashboard por no ser admin');
   });
 });
