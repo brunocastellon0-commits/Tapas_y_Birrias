@@ -1,27 +1,7 @@
-import { test, Page } from '@playwright/test';
+import { test, expect, Page } from '@playwright/test';
 
 export async function setTestBypass(page: Page) {
   await page.setExtraHTTPHeaders({ 'x-test-bypass': '1' });
-}
-
-export async function setAuthCookie(page: Page) {
-  await page.context().addCookies([
-    {
-      name: 'sb-vliahhgkfwpyutdfszra-auth-token',
-      value: JSON.stringify({
-        access_token: 'mock-access-token',
-        token_type: 'bearer',
-        expires_in: 3600,
-        refresh_token: 'mock-refresh-token',
-        user: { id: 'mock-user-id-1', email: 'test@hadassa.com' },
-      }),
-      domain: 'localhost',
-      path: '/',
-      httpOnly: false,
-      secure: false,
-      sameSite: 'Lax',
-    },
-  ]);
 }
 
 export async function screenshot(page: Page, name: string) {
@@ -41,44 +21,13 @@ export async function submitForm(page: Page) {
   });
 }
 
-export const MOCK_USER = {
-  id: 'mock-user-id-1',
-  email: 'test@hadassa.com',
-  user_metadata: { nombre: 'Test', apellido: 'User' },
-  app_metadata: {},
-  aud: 'authenticated',
-  role: 'authenticated',
-};
-
 export const MOCK_ADMIN_USER = {
-  ...MOCK_USER,
   id: 'mock-admin-id-1',
   email: 'admin@hadassa.com',
+  aud: 'authenticated',
+  role: 'authenticated',
+  user_metadata: { nombre: 'Admin', apellido: 'User' },
 };
-
-export async function mockSupabaseAuth(page: Page, user = MOCK_USER) {
-  await page.route('**/auth/v1/user', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        id: user.id,
-        aud: 'authenticated',
-        role: 'authenticated',
-        email: user.email,
-        email_confirmed_at: new Date().toISOString(),
-        phone: '',
-        confirmed_at: new Date().toISOString(),
-        last_sign_in_at: new Date().toISOString(),
-        app_metadata: { provider: 'email' },
-        user_metadata: { nombre: user.user_metadata?.nombre ?? '', apellido: user.user_metadata?.apellido ?? '' },
-        identities: [],
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }),
-    });
-  });
-}
 
 export async function mockSupabaseTables(page: Page) {
   await page.route('**/rest/v1/**', async (route) => {
@@ -126,6 +75,16 @@ export async function mockSupabaseTables(page: Page) {
           { monto: 320, created_at: new Date().toISOString() },
         ]),
       });
+    } else if (url.includes('categorias_productos')) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([
+          { id: 1, nombre: 'Clásicas', activo: true, orden: 1, sucursal_id: 1 },
+          { id: 2, nombre: 'Bebidas', activo: true, orden: 2, sucursal_id: 1 },
+          { id: 3, nombre: 'Platos', activo: true, orden: 3, sucursal_id: 1 },
+        ]),
+      });
     } else if (url.includes('productos')) {
       await route.fulfill({
         status: 200,
@@ -139,21 +98,11 @@ export async function mockSupabaseTables(page: Page) {
           { id: 6, nombre: 'Lomo Saltado', categoria_id: 3, categoria: { nombre: 'Platos' }, precio: 650, costo: 280, medida: 'plato', stock: 20, activo: true, created_at: new Date().toISOString() },
         ]),
       });
-    } else if (url.includes('categorias_productos')) {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify([
-          { id: 1, nombre: 'Clásicas', activo: true, orden: 1, sucursal_id: 1 },
-          { id: 2, nombre: 'Bebidas', activo: true, orden: 2, sucursal_id: 1 },
-          { id: 3, nombre: 'Platos', activo: true, orden: 3, sucursal_id: 1 },
-        ]),
-      });
     } else if (url.includes('usuarios')) {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify([{ id: 'mock-user-id-1', cargo_id: 1, sucursal_id: 1 }]),
+        body: JSON.stringify([{ id: 'mock-admin-id-1', cargo_id: 1, sucursal_id: 1 }]),
       });
     } else if (url.includes('cargos')) {
       await route.fulfill({
@@ -177,19 +126,63 @@ export async function mockSupabaseTables(page: Page) {
   });
 }
 
-export async function setupAuthenticatedPage(page: Page, user = MOCK_USER) {
-  await setTestBypass(page);
-  await setAuthCookie(page);
-  await page.route('**/auth/v1/token*', async (route) => {
+export async function mockSupabaseAuth(page: Page) {
+  await page.route(/auth\/v1\/user/, async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
-        access_token: 'fake-jwt-token', token_type: 'Bearer', expires_in: 3600,
-        refresh_token: 'fake-refresh', user,
+        id: MOCK_ADMIN_USER.id,
+        aud: 'authenticated',
+        role: 'authenticated',
+        email: MOCK_ADMIN_USER.email,
+        email_confirmed_at: new Date().toISOString(),
+        phone: '',
+        confirmed_at: new Date().toISOString(),
+        last_sign_in_at: new Date().toISOString(),
+        app_metadata: { provider: 'email' },
+        user_metadata: {},
+        identities: [],
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       }),
     });
   });
-  await mockSupabaseAuth(page, user);
+  await page.route(/auth\/v1\/token/, async (route) => {
+    const method = route.request().method();
+    if (method === 'POST') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          access_token: 'fake-jwt-token', token_type: 'Bearer', expires_in: 3600,
+          refresh_token: 'fake-refresh',
+          user: {
+            id: MOCK_ADMIN_USER.id, aud: 'authenticated', role: 'authenticated',
+            email: MOCK_ADMIN_USER.email,
+          },
+        }),
+      });
+    } else {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({}) });
+    }
+  });
+}
+
+export async function loginAsAdmin(page: Page) {
+  await setTestBypass(page);
+  await mockSupabaseAuth(page);
+  await mockSupabaseTables(page);
+  await page.goto('/login');
+  await page.waitForLoadState('networkidle');
+  await page.locator('#identifier').fill('admin@test.com');
+  await page.locator('#password').fill('password123');
+  await submitForm(page);
+  await expect(page).toHaveURL(/dashboard/, { timeout: 15000 });
+}
+
+export async function setupAuthenticatedPage(page: Page) {
+  await setTestBypass(page);
+  await mockSupabaseAuth(page);
   await mockSupabaseTables(page);
 }

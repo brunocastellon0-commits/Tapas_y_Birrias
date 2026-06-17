@@ -5,7 +5,7 @@ test.describe('Dashboard', () => {
   test.beforeEach(async ({ page }) => {
     await setupAuthenticatedPage(page);
     await page.goto('/dashboard');
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(2000);
   });
 
   test('Renderiza título y fecha del dashboard', async ({ page }) => {
@@ -42,7 +42,7 @@ test.describe('Dashboard', () => {
 
   test('Sidebar se renderiza con enlaces correctos', async ({ page }) => {
     await expect(page.getByRole('link', { name: 'Dashboard' })).toBeVisible();
-    await expect(page.getByText('Mesas')).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Mesas', exact: true })).toBeVisible();
     await expect(page.getByText('Cerrar Sesión')).toBeVisible();
     await screenshot(page, 'Dashboard - sidebar');
   });

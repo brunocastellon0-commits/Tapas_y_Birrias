@@ -19,19 +19,19 @@ pipeline {
 
         stage('Instalar dependencias') {
             steps {
-                sh 'npm ci'
+                bat 'npm ci'
             }
         }
 
         stage('Instalar Playwright') {
             steps {
-                sh 'npx playwright install chromium'
+                bat 'npx playwright install chromium'
             }
         }
 
         stage('Ejecutar tests E2E') {
             steps {
-                sh 'npm run test:e2e'
+                bat 'npm run test:e2e'
             }
             post {
                 always {
