@@ -1,26 +1,90 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --cyan-50: #ECFEFF;
+  --cyan-100: #CFFAFE;
+  --cyan-200: #A5F3FC;
+  --cyan-300: #67E8F9;
+  --cyan-400: #22D3EE;
+  --cyan-500: #06B6D4;
+  --cyan-600: #0891B2;
+  --cyan-700: #0E7490;
+  --cyan-800: #155E75;
+  --cyan-900: #164E63;
+  --cyan-950: #083344;
+
+  --bg-deepest: #07080B;
+  --bg-base: #0C0E14;
+  --bg-surface: #141822;
+  --bg-elevated: #1C2133;
+  --bg-hover: #252C42;
+  --bg-card: #111520;
+
+  --border-subtle: rgba(6, 182, 212, 0.08);
+  --border-default: rgba(6, 182, 212, 0.15);
+  --border-strong: rgba(6, 182, 212, 0.25);
+
+  --text-primary: #F0F4FF;
+  --text-secondary: rgba(240, 244, 255, 0.7);
+  --text-muted: rgba(240, 244, 255, 0.4);
+  --text-cyan: #22D3EE;
+
+  --gradient-primary: linear-gradient(135deg, #0891B2, #06B6D4);
+  --gradient-hover: linear-gradient(135deg, #06B6D4, #22D3EE);
+  --glow-cyan: 0 0 20px rgba(6, 182, 212, 0.3);
+  --glow-cyan-strong: 0 0 30px rgba(6, 182, 212, 0.5);
+
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.4);
+  --shadow-elevated: 0 8px 32px rgba(0, 0, 0, 0.5);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-background: var(--bg-base);
+  --color-foreground: var(--text-primary);
+  --color-primary: #06B6D4;
+  --color-primary-foreground: #F0F4FF;
+  --color-secondary: #1C2133;
+  --color-secondary-foreground: rgba(240, 244, 255, 0.7);
+  --color-destructive: #EF4444;
+  --color-muted: rgba(240, 244, 255, 0.4);
+  --color-muted-foreground: rgba(240, 244, 255, 0.5);
+  --color-accent: rgba(6, 182, 212, 0.15);
+  --color-accent-foreground: #22D3EE;
+  --color-card: #111520;
+  --color-card-foreground: #F0F4FF;
+  --color-border: rgba(6, 182, 212, 0.15);
+  --color-ring: #06B6D4;
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-serif: 'Playfair Display', serif;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background: rgba(6, 182, 212, 0.3);
+  color: #F0F4FF;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(6, 182, 212, 0.15);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(6, 182, 212, 0.3);
 }
