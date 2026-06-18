@@ -12,10 +12,6 @@ export async function middleware(request: NextRequest) {
   const isProtected = protectedRoutes.some((r) => pathname.startsWith(r))
   const isAuthRoute = authRoutes.some((r) => pathname.startsWith(r))
 
-  if (request.headers.get('x-test-bypass') === '1' && (isProtected || isAuthRoute)) {
-    return supabaseResponse
-  }
-
   if (!user && isProtected) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'

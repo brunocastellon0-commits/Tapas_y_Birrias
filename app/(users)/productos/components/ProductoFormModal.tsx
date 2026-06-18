@@ -88,7 +88,7 @@ export function ProductoFormModal({ producto, categorias, onClose }: Props) {
 
     setGuardando(false);
     if (err) {
-      setError(err.message);
+      setError('Ocurrió un error al guardar el producto. Intenta de nuevo.');
     } else {
       onClose();
     }

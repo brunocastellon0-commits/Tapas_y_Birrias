@@ -1,8 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { User, Lock, Coffee, TrendingUp, Store, ShieldCheck, Loader2 } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
+import { User, Lock, Coffee, TrendingUp, Store, ShieldCheck, Loader2, AlertTriangle } from "lucide-react";
 
 import InputConIcono from "../components/input_con_icono";
 import BotonSocial from "../components/boton";
@@ -10,9 +9,9 @@ import TarjetaCaracteristica from "../components/tarjeta_caracteristica";
 
 const Login = () => {
   const router = useRouter();
-  const supabase = createClient();
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState("");
+  const [remaining, setRemaining] = useState<number | null>(null);
   const [identifier, setIdentifier] = useState(""); 
   const [password, setPassword] = useState("");
 
@@ -26,17 +25,28 @@ const Login = () => {
     setCargando(true);
     setError("");
 
-    const email = identifier.includes("@") ? identifier : `${identifier}@placeholder.com`;
-
-    const { error: authError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
+    const res = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ identifier, password }),
     });
 
     setCargando(false);
 
-    if (authError) {
-      setError("Credenciales inválidas. Verifica usuario y contraseña.");
+    if (res.status === 429) {
+      setError("Demasiados intentos. Espera 60 segundos.");
+      return;
+    }
+
+    if (res.status === 401) {
+      const data = await res.json();
+      setError("Credenciales inválidas.");
+      setRemaining(data.remaining ?? null);
+      return;
+    }
+
+    if (!res.ok) {
+      setError("Error del servidor. Intenta de nuevo.");
       return;
     }
 
@@ -92,7 +102,11 @@ const Login = () => {
             <form className="space-y-6" onSubmit={handleSubmit}>
               {error && (
                 <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-xl p-3 text-center">
+                  <AlertTriangle className="w-4 h-4 inline mr-1.5 -mt-0.5" />
                   {error}
+                  {remaining !== null && remaining > 0 && (
+                    <span className="block text-xs text-red-400/70 mt-1">{remaining} intento(s) restante(s)</span>
+                  )}
                 </div>
               )}
               <InputConIcono

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, DollarSign, QrCode, CreditCard, Banknote, Calculator, Loader2, CheckCircle } from 'lucide-react';
+import { X, DollarSign, QrCode, CreditCard, Banknote, Calculator, Loader2, CheckCircle, AlertTriangle } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { C } from './tokens';
 
@@ -48,6 +48,7 @@ export default function CajaPanel({ isOpen, onClose }: CajaPanelProps) {
   const [montoQR, setMontoQR] = useState(0);
   const [montoTarjeta, setMontoTarjeta] = useState(0);
   const [observaciones, setObservaciones] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
   const [ventasDia, setVentasDia] = useState({ efectivo: 0, qr: 0, tarjeta: 0 });
 
   useEffect(() => {
@@ -122,7 +123,7 @@ export default function CajaPanel({ isOpen, onClose }: CajaPanelProps) {
 
     setSaving(false);
     if (error) {
-      alert('Error al abrir caja: ' + error.message);
+      setErrorMsg('No se pudo abrir la caja. Intenta de nuevo.');
       return;
     }
     setSuccess(true);
@@ -149,7 +150,7 @@ export default function CajaPanel({ isOpen, onClose }: CajaPanelProps) {
     });
 
     if (insertError) {
-      alert('Error al cerrar caja: ' + insertError.message);
+      setErrorMsg('No se pudo cerrar la caja. Intenta de nuevo.');
       setSaving(false);
       return;
     }
@@ -251,6 +252,11 @@ export default function CajaPanel({ isOpen, onClose }: CajaPanelProps) {
               </div>
             ) : (
               <div style={{ padding: '20px 24px' }}>
+                {errorMsg && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: 'rgba(240,82,82,0.1)', border: '1px solid rgba(240,82,82,0.3)', borderRadius: 12, marginBottom: 16, fontSize: 12, color: '#F05252' }}>
+                    <AlertTriangle size={14} /> {errorMsg}
+                  </div>
+                )}
                 {modo === 'cerrar' && aperturaActiva && (
                   <div
                     style={{

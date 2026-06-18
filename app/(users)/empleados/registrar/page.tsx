@@ -82,14 +82,16 @@ export default function RegistrarEmpleadoPage() {
       return;
     }
 
+    const passwordGenerada = crypto.randomUUID().slice(0, 12) + "A1!";
+
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email: formData.email,
-      password: "temporal123",
+      password: passwordGenerada,
       options: { data: { nombre: formData.nombre, apellido: formData.apellido } },
     });
 
     if (authError || !authData.user) {
-      setStatus({ status: 'error', message: authError?.message || "Error al crear usuario." });
+      setStatus({ status: 'error', message: "Error al crear usuario." });
       setIsSubmitting(false);
       return;
     }
@@ -108,13 +110,13 @@ export default function RegistrarEmpleadoPage() {
     });
 
     if (insertError) {
-      setStatus({ status: 'error', message: `Error al guardar perfil: ${insertError.message}` });
+      setStatus({ status: 'error', message: "Error al guardar el perfil." });
       setIsSubmitting(false);
       return;
     }
 
-    setStatus({ status: 'success', message: "Usuario registrado exitosamente." });
-    setTimeout(() => { router.push("/dashboard"); }, 1000);
+    setStatus({ status: 'success', message: `Usuario registrado. Contraseña: ${passwordGenerada}` });
+    setTimeout(() => { router.push("/dashboard"); }, 5000);
   };
 
   const StatusIcon = status?.status === 'success' ? CheckCircle : status?.status === 'error' ? XCircle : Loader2;

@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
     Plus, Minus, X, ChefHat, CreditCard, QrCode, Banknote,
     ArrowUpCircle, ArrowDownCircle, Send, CheckSquare,
-    Utensils, Package, Star, Receipt, StickyNote, ShoppingBag, Loader2,
+    Utensils, Package, Star, Receipt, StickyNote, ShoppingBag, Loader2, AlertTriangle,
 } from 'lucide-react';
 import { C } from './tokens';
 
@@ -100,6 +100,7 @@ export function OrderPanel({
     const [sending, setSending] = useState<boolean>(false);
     const [cobrandoSending, setCobrandoSending] = useState<boolean>(false);
     const [cubiertos, setCubiertos] = useState<number>(2);
+    const [errorMsg, setErrorMsg] = useState<string>('');
 
     const subtotal = order ? getSubtotal(order) : pendingItems.reduce((s, i) => s + i.price * i.qty, 0);
     const tax = Math.round(subtotal * 0.105);
@@ -137,7 +138,7 @@ export function OrderPanel({
         if (!table) return;
         const items = order ? order.items : pendingItems;
         if (!items || items.length === 0) {
-            alert('Agrega al menos un producto.');
+            setErrorMsg('Agrega al menos un producto.');
             return;
         }
         setSending(true);
@@ -151,7 +152,7 @@ export function OrderPanel({
 
     async function handleCobrar() {
         if (!table || !order) {
-            alert('No hay comanda activa.');
+            setErrorMsg('No hay comanda activa.');
             return;
         }
         const methodLabel = order.paymentMethod === 'cash' ? 'Efectivo' : order.paymentMethod === 'card' ? 'Tarjeta' : 'QR';
@@ -168,12 +169,11 @@ export function OrderPanel({
     async function handleMovimiento(tipo: 'entrada' | 'salida', val: string, setter: React.Dispatch<React.SetStateAction<string>>) {
         const monto = parseFloat(val);
         if (!monto || monto <= 0) {
-            alert('Ingresa un monto válido.');
+            setErrorMsg('Ingresa un monto válido.');
             return;
         }
         await onMovimientoCaja?.(tipo, monto, tipo === 'entrada' ? 'Ingreso manual' : 'Egreso manual');
         setter('');
-        alert('Movimiento registrado.');
     }
 
     if (!table) {
@@ -202,6 +202,12 @@ export function OrderPanel({
 
             {/* ── Panel Header ─────────────────────────────────────────────────── */}
             <div style={{ padding: '18px 20px 14px', borderBottom: `1px solid ${C.br}`, flexShrink: 0, background: `linear-gradient(180deg, ${C.bgCard2} 0%, ${C.bgCard} 100%)` }}>
+                {errorMsg && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'rgba(240,82,82,0.1)', border: '1px solid rgba(240,82,82,0.3)', borderRadius: 10, marginBottom: 10, fontSize: 11, color: '#F05252' }}>
+                    <AlertTriangle size={12} /> {errorMsg}
+                    <button onClick={() => setErrorMsg('')} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#F05252', cursor: 'pointer', padding: 0 }}><X size={12} /></button>
+                  </div>
+                )}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                     <h2 style={{ fontFamily: C.serif, fontSize: 19, fontWeight: 600, color: C.t1, margin: 0, letterSpacing: '-0.2px' }}>
                         Detalle de Comanda

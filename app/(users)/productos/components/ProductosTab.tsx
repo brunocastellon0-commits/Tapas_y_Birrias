@@ -118,7 +118,7 @@ export function ProductosTab({ productos, categorias, cargando, onRefresh }: Pro
   async function handleEliminar(id: number) {
     setEliminando(id);
     setErrorEliminar('');
-    const { error } = await supabase.from('productos').delete().eq('id', id);
+    const { error } = await supabase.from('productos').update({ activo: false }).eq('id', id);
     setEliminando(null);
     if (error) {
       setErrorEliminar(error.message);
