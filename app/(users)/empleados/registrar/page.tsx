@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, CheckCircle, XCircle, AlertTriangle, UserPlus } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, AlertTriangle, UserPlus, Eye, EyeOff } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { DashboardSidebar } from '@/app/components/layout/sidebar';
 
@@ -20,6 +20,7 @@ interface EmployeeFormData {
   fechaIngreso: string;
   fechaSalida: string;
   email: string;
+  contrasena: string;
   tarifa_hora: string;
   es_salario_fijo: boolean;
 }
@@ -44,6 +45,7 @@ export default function RegistrarEmpleadoPage() {
     fechaIngreso: "",
     fechaSalida: "",
     email: "",
+    contrasena: "",
     tarifa_hora: "0.00",
     es_salario_fijo: false,
   });
@@ -64,6 +66,9 @@ export default function RegistrarEmpleadoPage() {
   const [errors, setErrors] = useState<Partial<Record<keyof EmployeeFormData, string>>>({});
   const [status, setStatus] = useState<{ status: 'success' | 'error' | 'loading'; message: string } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [registeredName, setRegisteredName] = useState('');
+  const [showContrasena, setShowContrasena] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const target = e.target;
@@ -80,7 +85,7 @@ export default function RegistrarEmpleadoPage() {
     setStatus({ status: 'loading', message: "Creando usuario..." });
 
     const newErrors: Partial<Record<keyof EmployeeFormData, string>> = {};
-    const requiredFields: (keyof EmployeeFormData)[] = ["nombre", "apellido", "email", "cargo_id", "fechaIngreso", "tarifa_hora"];
+    const requiredFields: (keyof EmployeeFormData)[] = ["nombre", "apellido", "email", "contrasena", "cargo_id", "fechaIngreso", "tarifa_hora"];
     requiredFields.forEach((key) => {
       if (!formData[key] && formData[key] !== false) newErrors[key] = "Campo obligatorio";
     });
@@ -91,42 +96,40 @@ export default function RegistrarEmpleadoPage() {
       return;
     }
 
-    const passwordGenerada = crypto.randomUUID().slice(0, 12) + "A1!";
+    try {
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.contrasena,
+          nombre: formData.nombre,
+          apellido: formData.apellido,
+          telefono: formData.telefono,
+          cargo_id: formData.cargo_id,
+          sucursal_id: formData.sucursal_id,
+          fecha_ingreso: formData.fechaIngreso,
+          fecha_salida: formData.fechaSalida,
+          tarifa_hora: formData.tarifa_hora,
+          es_salario_fijo: formData.es_salario_fijo,
+        }),
+      })
 
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: formData.email,
-      password: passwordGenerada,
-      options: { data: { nombre: formData.nombre, apellido: formData.apellido } },
-    });
+      const data = await res.json()
 
-    if (authError || !authData.user) {
-      setStatus({ status: 'error', message: "Error al crear usuario." });
+      if (!res.ok) {
+        setStatus({ status: 'error', message: data.error || "Error al registrar empleado." });
+        setIsSubmitting(false);
+        return;
+      }
+
       setIsSubmitting(false);
-      return;
-    }
-
-    const { error: insertError } = await supabase.from("usuarios").insert({
-      id: authData.user.id,
-      nombre: formData.nombre,
-      apellido: formData.apellido,
-      email: formData.email,
-      telefono: formData.telefono || null,
-      cargo_id: formData.cargo_id ? parseInt(formData.cargo_id) : null,
-      sucursal_id: formData.sucursal_id ? parseInt(formData.sucursal_id) : null,
-      fecha_ingreso: formData.fechaIngreso,
-      fecha_salida: formData.fechaSalida || null,
-      tarifa_hora: parseFloat(formData.tarifa_hora) || 0,
-      es_salario_fijo: formData.es_salario_fijo,
-    });
-
-    if (insertError) {
-      setStatus({ status: 'error', message: "Error al guardar el perfil." });
+      setRegisteredName(`${formData.nombre} ${formData.apellido}`);
+      setShowSuccessModal(true);
+    } catch (err) {
+      setStatus({ status: 'error', message: "Error de conexión con el servidor." });
       setIsSubmitting(false);
-      return;
     }
-
-    setStatus({ status: 'success', message: `Usuario registrado. Contraseña: ${passwordGenerada}` });
-    setTimeout(() => { router.push("/dashboard"); }, 5000);
   };
 
   const StatusIcon = status?.status === 'success' ? CheckCircle : status?.status === 'error' ? XCircle : Loader2;
@@ -197,6 +200,19 @@ export default function RegistrarEmpleadoPage() {
                   <input type="email" name="email" value={formData.email} onChange={handleChange}
                     className={`${inputClass} ${errors.email ? errorClass : ''}`} placeholder="ejemplo@correo.com" />
                   {errors.email && <p className="text-red-400 text-xs mt-1">{errors.email}</p>}
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className={labelClass}>Contraseña *</label>
+                  <div className="relative">
+                    <input type={showContrasena ? "text" : "password"} name="contrasena" value={formData.contrasena} onChange={handleChange}
+                      className={`${inputClass} ${errors.contrasena ? errorClass : ''} pr-10`} placeholder="Escriba la contraseña del empleado" />
+                    <button type="button" onClick={() => setShowContrasena(!showContrasena)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[rgba(240,244,255,0.3)] hover:text-[#F0F4FF] transition-colors cursor-pointer">
+                      {showContrasena ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  {errors.contrasena && <p className="text-red-400 text-xs mt-1">{errors.contrasena}</p>}
                 </div>
 
                 <div className="sm:col-span-2">
@@ -291,6 +307,29 @@ export default function RegistrarEmpleadoPage() {
           </div>
         </main>
       </div>
+
+      {showSuccessModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-[#141822] border border-[rgba(6,182,212,0.15)] rounded-2xl p-8 w-full max-w-md mx-4 shadow-2xl shadow-black/50 animate-fadeIn">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+                <CheckCircle className="w-5 h-5 text-emerald-400" />
+              </div>
+              <div>
+                <h3 className="text-[#F0F4FF] font-semibold text-lg">Empleado Registrado</h3>
+                <p className="text-[rgba(240,244,255,0.4)] text-sm">{registeredName}</p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => { setShowSuccessModal(false); router.push("/dashboard"); }}
+              className="w-full py-3 bg-gradient-to-r from-cyan-700 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 text-white rounded-2xl font-bold shadow-lg shadow-[rgba(6,182,212,0.2)] hover:shadow-[rgba(6,182,212,0.4)] transition-all duration-300 border border-[rgba(6,182,212,0.15)] cursor-pointer"
+            >
+              Ir al Dashboard
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

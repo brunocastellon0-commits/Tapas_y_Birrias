@@ -47,19 +47,21 @@ function ServicioContent() {
   }, []);
 
   async function verificarCaja() {
-    const { count } = await supabase
+    const { count, error } = await supabase
       .from('aperturas_caja')
       .select('*', { count: 'exact', head: true })
       .eq('abierta', true);
+    if (error) console.error('verificarCaja error:', error);
     setCajaAbierta((count ?? 0) > 0);
   }
 
   async function cargarComandasActivas() {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('comandas')
       .select('id, mesa_id, etapa, items:comanda_items(*)')
       .in('etapa', ['tomada', 'en-cocina', 'lista', 'entregada']);
 
+    if (error) console.error('cargarComandasActivas error:', error);
     if (data) {
       const ocupadas = new Set(data.map((c: any) => c.mesa_id));
       setOccupiedTableIds(ocupadas);
@@ -67,7 +69,8 @@ function ServicioContent() {
   }
 
   async function cargarProductos() {
-    const { data } = await supabase.from('productos').select('*').eq('activo', true);
+    const { data, error } = await supabase.from('productos').select('*').eq('activo', true);
+    if (error) console.error('cargarProductos error:', error);
     if (data) {
       setProductos(
         data.map((p: any) => ({
@@ -83,7 +86,7 @@ function ServicioContent() {
   }
 
   async function cargarHistorial() {
-    const { data: comandas } = await supabase
+    const { data: comandas, error } = await supabase
       .from('comandas')
       .select(
         `
@@ -97,6 +100,7 @@ function ServicioContent() {
       .order('created_at', { ascending: false })
       .limit(50);
 
+    if (error) console.error('cargarHistorial error:', error);
     if (comandas) {
       setHistorial(
         comandas.map((c: any) => ({

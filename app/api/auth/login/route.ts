@@ -43,9 +43,13 @@ export async function POST(request: Request) {
   const { error } = await supabase.auth.signInWithPassword({ email, password })
 
   if (error) {
+    console.error('Supabase login error:', error.message, error.code, error.status)
+    const msg = error.status === 429
+      ? 'Demasiados intentos. Espera y vuelve a intentar.'
+      : 'Credenciales inválidas.'
     return NextResponse.json(
-      { error: 'Credenciales inválidas.', remaining },
-      { status: 401 }
+      { error: msg, remaining },
+      { status: error.status || 401 }
     )
   }
 

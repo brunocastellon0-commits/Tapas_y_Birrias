@@ -25,32 +25,38 @@ const Login = () => {
     setCargando(true);
     setError("");
 
-    const res = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ identifier, password }),
-    });
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ identifier, password }),
+      });
 
-    setCargando(false);
+      setCargando(false);
 
-    if (res.status === 429) {
-      setError("Demasiados intentos. Espera 60 segundos.");
-      return;
+      if (res.status === 429) {
+        const data = await res.json();
+        setError(data.error || "Demasiados intentos. Espera 60 segundos.");
+        return;
+      }
+
+      if (res.status === 401) {
+        const data = await res.json();
+        setError(data.error || "Credenciales inválidas.");
+        setRemaining(data.remaining ?? null);
+        return;
+      }
+
+      if (!res.ok) {
+        setError("Error del servidor. Intenta de nuevo.");
+        return;
+      }
+
+      router.push("/dashboard");
+    } catch (err) {
+      setCargando(false);
+      setError("Error de conexión. Verifica que el servidor esté corriendo.");
     }
-
-    if (res.status === 401) {
-      const data = await res.json();
-      setError("Credenciales inválidas.");
-      setRemaining(data.remaining ?? null);
-      return;
-    }
-
-    if (!res.ok) {
-      setError("Error del servidor. Intenta de nuevo.");
-      return;
-    }
-
-    router.push("/dashboard");
   };
 
   return (
