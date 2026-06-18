@@ -78,7 +78,7 @@ function ProductosContent() {
       .from('productos')
       .select('*, categoria:categoria_id(nombre)')
       .order('nombre');
-    if (sucursalId) query = query.eq('sucursal_id', sucursalId);
+    
     const { data } = await query;
 
     if (data) {
