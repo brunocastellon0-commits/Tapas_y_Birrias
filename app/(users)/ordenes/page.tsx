@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client';
 import { Calculator, Circle } from 'lucide-react';
 
 import { DashboardSidebar } from '@/app/components/layout/sidebar';
-import TableMapView, { TableData } from './components/TableMapView';
+import TableCards, { TableData } from './components/TableCards';
 import CajaPanel from './components/CajaPanel';
 import CajaHistorial from './components/CajaHistorial';
 import { OrderPanel, OrderItem, Product, Table, Order } from './components/OrderPanel';
@@ -233,6 +233,9 @@ function ServicioContent() {
           notas: i.notes.length > 0 ? i.notes : null,
         }));
 
+      // Delete existing items and re-insert all to keep in sync with local state
+      await supabase.from('comanda_items').delete().eq('comanda_id', comandaId);
+
       if (itemsToInsert.length > 0) {
         await supabase.from('comanda_items').insert(itemsToInsert);
       }
@@ -244,12 +247,12 @@ function ServicioContent() {
         .update({ etapa: 'en-cocina', total: subtotal + tax, cubiertos })
         .eq('id', comandaId);
 
-      setCurrentOrder({
-        ...currentOrder,
+      setCurrentOrder((prev: Order | null) => ({
+        ...prev,
         id: comandaId,
         stage: 'en-cocina',
-        items: items.map((i) => ({ ...i, id: `tmp-${i.id_producto}` })),
-      });
+        items: items.map((i) => ({ ...i, id: `tmp-${i.id_producto}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}` })),
+      }));
 
       cargarComandasActivas();
     },
@@ -286,6 +289,15 @@ function ServicioContent() {
       setSelectedTableId(null);
       cargarComandasActivas();
       cargarHistorial();
+    },
+    [supabase]
+  );
+
+  const handleChangeStage = useCallback(
+    async (orderId: string | number, stage: string) => {
+      await supabase.from('comandas').update({ etapa: stage }).eq('id', Number(orderId));
+      setCurrentOrder((prev) => prev ? { ...prev, stage: stage as Order['stage'] } : null);
+      cargarComandasActivas();
     },
     [supabase]
   );
@@ -440,8 +452,8 @@ function ServicioContent() {
         <main style={{ flex: 1, overflow: 'hidden', display: 'flex' }}>
           {activeTab === 'operacion' ? (
             <div style={{ flex: 1, display: 'flex', width: '100%' }}>
-              <div style={{ flex: 1, padding: 24, overflow: 'hidden' }}>
-                <TableMapView
+              <div style={{ flex: 1, padding: 24, overflow: 'auto' }}>
+                <TableCards
                   onTableSelect={handleTableSelect}
                   selectedTableId={selectedTableId}
                   occupiedTableIds={occupiedTableIds}
@@ -454,10 +466,9 @@ function ServicioContent() {
                 productosDisponibles={productos}
                 onUpdateQty={handleUpdateQty}
                 onSetPayment={handleSetPayment}
-                onAbrirMesa={handleAbrirMesa}
+                onChangeStage={handleChangeStage}
                 onEnviarCocina={handleEnviarCocina}
                 onCobrar={handleCobrar}
-                onMovimientoCaja={handleMovimientoCaja}
               />
             </div>
           ) : activeTab === 'historial' ? (

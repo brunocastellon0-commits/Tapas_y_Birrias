@@ -111,7 +111,20 @@ export async function mockSupabaseTables(page: Page, customData?: {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify(customData?.cargos ?? [{ id: 1, nombre: 'Administrador' }]),
+        body: JSON.stringify(customData?.cargos ?? [
+          { id: 1, nombre: 'Administrador' },
+          { id: 2, nombre: 'Mesero' },
+          { id: 3, nombre: 'Cocinero' },
+        ]),
+      });
+    } else if (url.includes('sucursales')) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([
+          { id: 1, nombre: 'Sucursal Central' },
+          { id: 2, nombre: 'Sucursal Norte' },
+        ]),
       });
     } else if (url.includes('aperturas_caja')) {
       await route.fulfill({

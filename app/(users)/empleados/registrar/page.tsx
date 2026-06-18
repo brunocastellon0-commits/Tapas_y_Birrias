@@ -1,14 +1,20 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, CheckCircle, XCircle, AlertTriangle, UserPlus } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { DashboardSidebar } from '@/app/components/layout/sidebar';
 
+interface SelectOption {
+  id: number;
+  nombre: string;
+}
+
 interface EmployeeFormData {
   nombre: string;
   apellido: string;
+  telefono: string;
   cargo_id: string;
   sucursal_id: string;
   fechaIngreso: string;
@@ -18,22 +24,6 @@ interface EmployeeFormData {
   es_salario_fijo: boolean;
 }
 
-interface SelectOption {
-  id: string;
-  nombre: string;
-}
-
-const cargosMock: SelectOption[] = [
-  { id: "1", nombre: "Desarrollador Frontend" },
-  { id: "2", nombre: "Desarrollador Backend" },
-  { id: "3", nombre: "Gerente de Proyecto" },
-];
-
-const sucursalesMock: SelectOption[] = [
-  { id: "1", nombre: "Sucursal Central" },
-  { id: "2", nombre: "Sucursal Norte" },
-];
-
 const inputClass = "w-full px-3 py-2 rounded-xl border outline-none transition-all bg-[#07080B] border-[rgba(6,182,212,0.08)] text-[#F0F4FF] placeholder-[rgba(240,244,255,0.3)] focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/30 text-sm";
 const errorClass = "border-red-500/50 focus:border-red-500 focus:ring-red-500/30";
 const labelClass = "text-sm font-medium text-[rgba(240,244,255,0.4)] mb-1.5 block";
@@ -41,9 +31,14 @@ const labelClass = "text-sm font-medium text-[rgba(240,244,255,0.4)] mb-1.5 bloc
 export default function RegistrarEmpleadoPage() {
   const router = useRouter();
   const supabase = createClient();
+  const [cargos, setCargos] = useState<SelectOption[]>([]);
+  const [sucursales, setSucursales] = useState<SelectOption[]>([]);
+  const [cargandoCargos, setCargandoCargos] = useState(true);
+  const [cargandoSucursales, setCargandoSucursales] = useState(true);
   const [formData, setFormData] = useState<EmployeeFormData>({
     nombre: "",
     apellido: "",
+    telefono: "",
     cargo_id: "",
     sucursal_id: "",
     fechaIngreso: "",
@@ -52,6 +47,20 @@ export default function RegistrarEmpleadoPage() {
     tarifa_hora: "0.00",
     es_salario_fijo: false,
   });
+
+  useEffect(() => {
+    supabase.from('cargos').select('id, nombre').then(({ data }) => {
+      if (data) setCargos(data);
+      setCargandoCargos(false);
+    });
+  }, []);
+
+  useEffect(() => {
+    supabase.from('sucursales').select('id, nombre').then(({ data }) => {
+      if (data) setSucursales(data);
+      setCargandoSucursales(false);
+    });
+  }, []);
   const [errors, setErrors] = useState<Partial<Record<keyof EmployeeFormData, string>>>({});
   const [status, setStatus] = useState<{ status: 'success' | 'error' | 'loading'; message: string } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -101,6 +110,7 @@ export default function RegistrarEmpleadoPage() {
       nombre: formData.nombre,
       apellido: formData.apellido,
       email: formData.email,
+      telefono: formData.telefono || null,
       cargo_id: formData.cargo_id ? parseInt(formData.cargo_id) : null,
       sucursal_id: formData.sucursal_id ? parseInt(formData.sucursal_id) : null,
       fecha_ingreso: formData.fechaIngreso,
@@ -188,6 +198,12 @@ export default function RegistrarEmpleadoPage() {
                     className={`${inputClass} ${errors.email ? errorClass : ''}`} placeholder="ejemplo@correo.com" />
                   {errors.email && <p className="text-red-400 text-xs mt-1">{errors.email}</p>}
                 </div>
+
+                <div className="sm:col-span-2">
+                  <label className={labelClass}>Teléfono</label>
+                  <input type="tel" name="telefono" value={formData.telefono} onChange={handleChange}
+                    className={inputClass} placeholder="+54 11 1234-5678" />
+                </div>
               </fieldset>
 
               <fieldset className="grid grid-cols-1 sm:grid-cols-2 gap-5 pb-6 border-b border-[rgba(6,182,212,0.08)]">
@@ -197,24 +213,38 @@ export default function RegistrarEmpleadoPage() {
 
                 <div>
                   <label className={labelClass}>Cargo *</label>
-                  <select name="cargo_id" value={formData.cargo_id} onChange={handleChange}
-                    className={`${inputClass} ${errors.cargo_id ? errorClass : ''}`}>
-                    <option value="">Seleccione cargo</option>
-                    {cargosMock.map((c) => (
-                      <option key={c.id} value={c.id}>{c.nombre}</option>
-                    ))}
-                  </select>
+                  {cargandoCargos ? (
+                    <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-[#07080B] border border-[rgba(6,182,212,0.08)] text-gray-500 text-sm">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Cargando cargos...
+                    </div>
+                  ) : (
+                    <select name="cargo_id" value={formData.cargo_id} onChange={handleChange}
+                      className={`${inputClass} ${errors.cargo_id ? errorClass : ''}`}>
+                      <option value="">Seleccione cargo</option>
+                      {cargos.map((c) => (
+                        <option key={c.id} value={c.id}>{c.nombre}</option>
+                      ))}
+                    </select>
+                  )}
                   {errors.cargo_id && <p className="text-red-400 text-xs mt-1">{errors.cargo_id}</p>}
                 </div>
 
                 <div>
                   <label className={labelClass}>Sucursal</label>
-                  <select name="sucursal_id" value={formData.sucursal_id} onChange={handleChange} className={inputClass}>
-                    <option value="">Seleccione sucursal</option>
-                    {sucursalesMock.map((s) => (
-                      <option key={s.id} value={s.id}>{s.nombre}</option>
-                    ))}
-                  </select>
+                  {cargandoSucursales ? (
+                    <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-[#07080B] border border-[rgba(6,182,212,0.08)] text-gray-500 text-sm">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Cargando sucursales...
+                    </div>
+                  ) : (
+                    <select name="sucursal_id" value={formData.sucursal_id} onChange={handleChange} className={inputClass}>
+                      <option value="">Seleccione sucursal</option>
+                      {sucursales.map((s) => (
+                        <option key={s.id} value={s.id}>{s.nombre}</option>
+                      ))}
+                    </select>
+                  )}
                 </div>
 
                 <div>

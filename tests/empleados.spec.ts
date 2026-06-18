@@ -21,6 +21,11 @@ test.describe('Registro de Empleados', () => {
     await screenshot(page, 'Empleados - formulario completo');
   });
 
+  test('Campo de teléfono se renderiza', async ({ page }) => {
+    await expect(page.locator('input[name="telefono"]')).toBeVisible();
+    await expect(page.getByPlaceholder('+54 11 1234-5678')).toBeVisible();
+  });
+
   test('Select de Cargo tiene opciones', async ({ page }) => {
     const cargoSelect = page.locator('select[name="cargo_id"]');
     await expect(cargoSelect).toBeVisible();
