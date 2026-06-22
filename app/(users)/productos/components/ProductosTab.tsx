@@ -238,9 +238,62 @@ export function ProductosTab({ productos, categorias, cargando, sucursalId, onRe
         )}
 
         {cargando ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-6 h-6 animate-spin text-gray-500" />
-          </div>
+          vista === 'table' ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-white/5">
+                    <th className="text-left text-gray-500 font-medium px-5 py-3">Producto</th>
+                    <th className="text-left text-gray-500 font-medium px-5 py-3">Categoría</th>
+                    <th className="text-right text-gray-500 font-medium px-5 py-3 hidden sm:table-cell">Precio</th>
+                    <th className="text-right text-gray-500 font-medium px-5 py-3 hidden md:table-cell">Costo</th>
+                    <th className="text-right text-gray-500 font-medium px-5 py-3 hidden lg:table-cell">Margen</th>
+                    <th className="text-right text-gray-500 font-medium px-5 py-3">Stock</th>
+                    <th className="text-center text-gray-500 font-medium px-5 py-3 hidden sm:table-cell">Medida</th>
+                    <th className="text-center text-gray-500 font-medium px-5 py-3">Estado</th>
+                    <th className="text-right text-gray-500 font-medium px-5 py-3">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Array.from({ length: 8 }).map((_, i) => (
+                    <tr key={i} className="border-b border-white/5">
+                      <td className="px-5 py-3.5"><div className="h-4 w-36 bg-white/5 rounded animate-pulse" /></td>
+                      <td className="px-5 py-3.5"><div className="h-4 w-20 bg-white/5 rounded animate-pulse" /></td>
+                      <td className="px-5 py-3.5 hidden sm:table-cell"><div className="h-4 w-14 bg-white/5 rounded animate-pulse ml-auto" /></td>
+                      <td className="px-5 py-3.5 hidden md:table-cell"><div className="h-4 w-14 bg-white/5 rounded animate-pulse ml-auto" /></td>
+                      <td className="px-5 py-3.5 hidden lg:table-cell"><div className="h-4 w-16 bg-white/5 rounded animate-pulse ml-auto" /></td>
+                      <td className="px-5 py-3.5"><div className="h-4 w-10 bg-white/5 rounded animate-pulse ml-auto" /></td>
+                      <td className="px-5 py-3.5 hidden sm:table-cell"><div className="h-4 w-12 bg-white/5 rounded animate-pulse mx-auto" /></td>
+                      <td className="px-5 py-3.5"><div className="h-5 w-16 bg-white/5 rounded-full animate-pulse mx-auto" /></td>
+                      <td className="px-5 py-3.5"><div className="flex justify-end gap-1"><div className="h-7 w-7 bg-white/5 rounded-lg animate-pulse" /><div className="h-7 w-7 bg-white/5 rounded-lg animate-pulse" /><div className="h-7 w-7 bg-white/5 rounded-lg animate-pulse" /></div></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="p-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <div key={i} className="bg-[#0c0e12] border border-white/10 rounded-xl p-4">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1 min-w-0 space-y-2">
+                        <div className="h-4 w-32 bg-white/5 rounded animate-pulse" />
+                        <div className="flex gap-2"><div className="h-4 w-16 bg-white/5 rounded animate-pulse" /><div className="h-4 w-12 bg-white/5 rounded animate-pulse" /></div>
+                      </div>
+                    </div>
+                    <div className="space-y-2.5 mb-3">
+                      {[40, 40, 40, 40].map((w, j) => (
+                        <div key={j} className="flex justify-between"><div className="h-3 w-12 bg-white/5 rounded animate-pulse" /><div className="h-3 w-14 bg-white/5 rounded animate-pulse" /></div>
+                      ))}
+                    </div>
+                    <div className="mb-3"><div className="h-1.5 w-full bg-white/5 rounded-full animate-pulse" /></div>
+                    <div className="flex justify-end gap-1 pt-2 border-t border-white/5"><div className="h-7 w-7 bg-white/5 rounded-lg animate-pulse" /><div className="h-7 w-7 bg-white/5 rounded-lg animate-pulse" /><div className="h-7 w-7 bg-white/5 rounded-lg animate-pulse" /></div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
         ) : filtrados.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-gray-500">
             <Package className="w-10 h-10 mb-3 opacity-30" />

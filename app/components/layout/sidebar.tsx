@@ -5,6 +5,8 @@ import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
+const SESSION_ADMIN_KEY = 'tyb_admin_check';
+
 export interface NavItem {
   id: string;
   label: string;
@@ -43,16 +45,41 @@ export function DashboardSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const supabase = createClient();
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      const cached = sessionStorage.getItem(SESSION_ADMIN_KEY);
+      if (!cached) return false;
+      return JSON.parse(cached).sucursalId !== undefined;
+    } catch {
+      return false;
+    }
+  });
 
   useEffect(() => {
+    const cached = sessionStorage.getItem(SESSION_ADMIN_KEY);
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        if (parsed.expiry > Date.now()) {
+          setIsAdmin(parsed.sucursalId !== undefined);
+          return;
+        }
+      } catch {}
+    }
+
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) return;
-      supabase.from('usuarios').select('cargo_id').eq('id', user.id).single().then(({ data: usuario }) => {
-        if (!usuario?.cargo_id) return;
-        supabase.from('cargos').select('nombre').eq('id', usuario.cargo_id).single().then(({ data: cargo }) => {
-          setIsAdmin(cargo?.nombre === 'Administrador');
-        });
+      supabase.from('usuarios').select('cargo_id, sucursal_id, cargos!inner(nombre)').eq('id', user.id).single().then(({ data: usuario }) => {
+        if (!usuario) return;
+        const esAdmin = (usuario as any).cargos?.nombre === 'Administrador';
+        setIsAdmin(esAdmin);
+        if (esAdmin) {
+          sessionStorage.setItem(SESSION_ADMIN_KEY, JSON.stringify({
+            sucursalId: (usuario as any).sucursal_id ?? null,
+            expiry: Date.now() + 30 * 60 * 1000,
+          }));
+        }
       });
     });
   }, []);

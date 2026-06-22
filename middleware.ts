@@ -18,28 +18,6 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  if (user && pathname.startsWith('/productos')) {
-    const { data: usuario } = await supabase
-      .from('usuarios')
-      .select('cargo_id')
-      .eq('id', user.id)
-      .single()
-
-    if (usuario?.cargo_id) {
-      const { data: cargo } = await supabase
-        .from('cargos')
-        .select('nombre')
-        .eq('id', usuario.cargo_id)
-        .single()
-
-      if (cargo?.nombre !== 'Administrador') {
-        const url = request.nextUrl.clone()
-        url.pathname = '/dashboard'
-        return NextResponse.redirect(url)
-      }
-    }
-  }
-
   if (user && isAuthRoute) {
     const url = request.nextUrl.clone()
     url.pathname = '/dashboard'

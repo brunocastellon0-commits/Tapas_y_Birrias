@@ -149,8 +149,17 @@ export function CategoriasTab({ categorias, productos, sucursalId, cargando, onR
       </div>
 
       {cargando ? (
-        <div className="flex items-center justify-center py-16">
-          <Loader2 className="w-6 h-6 animate-spin text-gray-500" />
+        <div className="divide-y divide-white/5">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-3 px-5 py-3.5">
+              <div className="w-2.5 h-2.5 rounded-full bg-white/5 animate-pulse shrink-0" />
+              <div className="flex-1 h-4 w-28 bg-white/5 rounded animate-pulse" />
+              <div className="h-5 w-16 bg-white/5 rounded-full animate-pulse" />
+              <div className="h-4 w-8 bg-white/5 rounded animate-pulse" />
+              <div className="h-7 w-7 bg-white/5 rounded-lg animate-pulse" />
+              <div className="h-7 w-7 bg-white/5 rounded-lg animate-pulse" />
+            </div>
+          ))}
         </div>
       ) : categorias.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-gray-500">
