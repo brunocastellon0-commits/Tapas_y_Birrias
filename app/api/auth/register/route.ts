@@ -37,8 +37,22 @@ export async function POST(request: Request) {
       user_metadata: { nombre, apellido },
     })
 
-    if (authError || !authData?.user) {
+    if (authError) {
       console.error('Admin createUser error:', authError)
+      const mensaje =
+        authError.message?.includes('already exists')
+          ? 'El correo electrónico ya está registrado.'
+          : authError.message?.includes('Email rate limit')
+          ? 'Demasiados intentos. Espera unos minutos.'
+          : authError.message || 'Error al crear el usuario en Supabase Auth.'
+      return NextResponse.json(
+        { error: mensaje },
+        { status: 400 }
+      )
+    }
+
+    if (!authData?.user) {
+      console.error('Admin createUser returned no user:', authData)
       return NextResponse.json(
         { error: 'Error al crear el usuario en Supabase Auth.' },
         { status: 400 }

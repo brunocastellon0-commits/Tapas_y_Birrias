@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, DollarSign, QrCode, CreditCard, Banknote, Calculator, Loader2, CheckCircle, AlertTriangle } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { ConfirmDialog } from '@/app/components/ui/confirm-dialog';
 import { C } from './tokens';
 
 const DENOMINACIONES_EUR = [
@@ -50,17 +51,34 @@ export default function CajaPanel({ isOpen, onClose }: CajaPanelProps) {
   const [observaciones, setObservaciones] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [ventasDia, setVentasDia] = useState({ efectivo: 0, qr: 0, tarjeta: 0 });
+  const [nombreUsuario, setNombreUsuario] = useState('');
+  const [showConfirm, setShowConfirm] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
     setSuccess(false);
     setLoading(true);
+    setShowConfirm(false);
     setCorte(DENOMINACIONES_EUR.map((d) => ({ denominacion: d.value, cantidad: 0 })));
     setMontoQR(0);
     setMontoTarjeta(0);
     setObservaciones('');
     cargarEstado();
+    cargarNombreUsuario();
   }, [isOpen]);
+
+  async function cargarNombreUsuario() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user?.id) return;
+    const { data: usuario } = await supabase
+      .from('usuarios')
+      .select('nombre, apellido')
+      .eq('id', user.id)
+      .single();
+    if (usuario) {
+      setNombreUsuario(`${usuario.nombre} ${usuario.apellido}`);
+    }
+  }
 
   async function cargarEstado() {
     const { data: apertura } = await supabase
@@ -182,7 +200,11 @@ export default function CajaPanel({ isOpen, onClose }: CajaPanelProps) {
             alignItems: 'center',
             justifyContent: 'center',
           }}
-          onClick={onClose}
+          onClick={() => {
+            const tieneDatos = corte.some(c => c.cantidad > 0) || montoQR > 0 || montoTarjeta > 0 || observaciones;
+            if (tieneDatos) setShowConfirm(true);
+            else onClose();
+          }}
         >
           <motion.div
             initial={{ scale: 0.92, y: 20 }}
@@ -210,12 +232,23 @@ export default function CajaPanel({ isOpen, onClose }: CajaPanelProps) {
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <Calculator size={18} color={C.goldLight} />
-                <span style={{ fontFamily: C.serif, fontSize: 17, color: C.t1, fontWeight: 600 }}>
-                  {modo === 'abrir' ? 'Abrir Caja' : 'Cerrar Caja'}
-                </span>
+                <div>
+                  <span style={{ fontFamily: C.serif, fontSize: 17, color: C.t1, fontWeight: 600 }}>
+                    {modo === 'abrir' ? 'Abrir Caja' : 'Cerrar Caja'}
+                  </span>
+                  {nombreUsuario && (
+                    <div style={{ fontSize: 11, color: C.t3, fontFamily: C.sans, marginTop: 1 }}>
+                      Cajero: {nombreUsuario}
+                    </div>
+                  )}
+                </div>
               </div>
               <button
-                onClick={onClose}
+                onClick={() => {
+                  const tieneDatos = corte.some(c => c.cantidad > 0) || montoQR > 0 || montoTarjeta > 0 || observaciones;
+                  if (tieneDatos) setShowConfirm(true);
+                  else onClose();
+                }}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.t3 }}
               >
                 <X size={16} />
@@ -529,6 +562,11 @@ export default function CajaPanel({ isOpen, onClose }: CajaPanelProps) {
           </motion.div>
         </motion.div>
       )}
+      <ConfirmDialog
+        isOpen={showConfirm}
+        onMantener={() => setShowConfirm(false)}
+        onSalir={() => { setShowConfirm(false); onClose(); }}
+      />
     </AnimatePresence>
   );
 }

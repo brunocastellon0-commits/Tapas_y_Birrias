@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { X, Loader2, ImageIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 import { createClient } from '@/lib/supabase/client';
+import { ConfirmDialog } from '@/app/components/ui/confirm-dialog';
 import type { Producto, Categoria } from './ProductosTab';
 
 interface Props {
@@ -40,6 +41,17 @@ export function ProductoFormModal({ producto, categorias, sucursalId, onClose }:
     imagen: producto?.imagen ?? '',
     activo: producto?.activo ?? true,
   });
+
+  const [showConfirm, setShowConfirm] = useState(false);
+
+  const tieneCambios = form.nombre.trim() !== (producto?.nombre ?? '')
+    || form.categoria_id !== (producto?.categoria_id ?? null)
+    || form.precio !== (producto?.precio.toString() ?? '0')
+    || form.costo !== (producto?.costo.toString() ?? '0')
+    || form.medida !== (producto?.medida ?? '')
+    || form.stock !== (producto?.stock.toString() ?? '0')
+    || form.imagen !== (producto?.imagen ?? '')
+    || form.activo !== (producto?.activo ?? true);
 
   const precioNum = parseFloat(form.precio) || 0;
   const costoNum = parseFloat(form.costo) || 0;
@@ -102,7 +114,12 @@ export function ProductoFormModal({ producto, categorias, sucursalId, onClose }:
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 flex items-center justify-center bg-[#07080B]/80 backdrop-blur-sm"
-      onClick={(e) => e.target === e.currentTarget && onClose()}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          if (tieneCambios) setShowConfirm(true);
+          else onClose();
+        }
+      }}
     >
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
@@ -116,7 +133,7 @@ export function ProductoFormModal({ producto, categorias, sucursalId, onClose }:
             {esEdicion ? 'Editar Producto' : 'Nuevo Producto'}
           </h3>
           <button
-            onClick={onClose}
+            onClick={() => { if (tieneCambios) setShowConfirm(true); else onClose(); }}
             className="p-1 rounded-lg text-[rgba(240,244,255,0.3)] hover:text-[#F0F4FF] hover:bg-[rgba(6,182,212,0.1)] transition-colors cursor-pointer"
           >
             <X size={18} />
@@ -285,7 +302,7 @@ export function ProductoFormModal({ producto, categorias, sucursalId, onClose }:
           <div className="flex justify-end gap-3 pt-2 border-t border-[rgba(6,182,212,0.08)]">
             <button
               type="button"
-              onClick={onClose}
+              onClick={() => { if (tieneCambios) setShowConfirm(true); else onClose(); }}
               className="px-4 py-2 text-sm text-[rgba(240,244,255,0.4)] hover:text-[#F0F4FF] transition-colors cursor-pointer"
             >
               Cancelar
@@ -301,6 +318,12 @@ export function ProductoFormModal({ producto, categorias, sucursalId, onClose }:
           </div>
         </form>
       </motion.div>
+
+      <ConfirmDialog
+        isOpen={showConfirm}
+        onMantener={() => setShowConfirm(false)}
+        onSalir={() => { setShowConfirm(false); onClose(); }}
+      />
     </motion.div>
   );
 }

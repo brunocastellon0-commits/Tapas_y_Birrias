@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react'; 
 import {
     Plus, Minus, X, ChefHat, CreditCard, QrCode, Banknote,
     CheckSquare, Utensils, Package, Star, Receipt, StickyNote,
-    ShoppingBag, Loader2, AlertTriangle, RefreshCw,
+    ShoppingBag, Loader2, AlertTriangle, RefreshCw, Search,
 } from 'lucide-react';
+import { ConfirmDialog } from '@/app/components/ui/confirm-dialog';
 import { C } from './tokens';
 
 // ─── TYPES & INTERFACES ─────────────────────────────────────────────────────────
@@ -100,6 +101,15 @@ export function OrderPanel({
     const [cubiertos, setCubiertos] = useState<number>(2);
     const [errorMsg, setErrorMsg] = useState<string>('');
     const [hasLocalChanges, setHasLocalChanges] = useState<boolean>(false);
+    const [busquedaProductos, setBusquedaProductos] = useState('');
+    const [showConfirmProductModal, setShowConfirmProductModal] = useState(false);
+    const [showConfirmCobrarModal, setShowConfirmCobrarModal] = useState(false);
+
+    const productosFiltrados = useMemo(() => {
+        if (!busquedaProductos.trim()) return productosDisponibles;
+        const q = busquedaProductos.toLowerCase();
+        return productosDisponibles.filter(p => p.name.toLowerCase().includes(q));
+    }, [productosDisponibles, busquedaProductos]);
 
     const combinedItems = order ? [...order.items, ...pendingItems] : pendingItems;
     const subtotal = combinedItems.reduce((s, i) => s + i.price * i.qty, 0);
@@ -314,20 +324,53 @@ export function OrderPanel({
                     {showProductModal && (
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                             style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                            onClick={() => setShowProductModal(false)}>
+                            onClick={() => {
+                                if (pendingItems.length > 0) setShowConfirmProductModal(true);
+                                else setShowProductModal(false);
+                            }}>
                             <motion.div initial={{ scale: 0.92, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.92, y: 20 }}
                                 onClick={e => e.stopPropagation()}
                                 style={{ background: '#1C1C21', border: `1px solid ${C.br}`, borderRadius: 18, padding: 24, width: 420, maxHeight: '70vh', overflowY: 'auto' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                                     <span style={{ fontFamily: C.serif, fontSize: 17, color: C.t1, fontWeight: 600 }}>Menú — Agregar Producto</span>
-                                    <button onClick={() => setShowProductModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.t3 }}><X size={16} /></button>
+                                    <button onClick={() => {
+                                        const tieneItems = pendingItems.length > 0;
+                                        if (tieneItems) setShowConfirmProductModal(true);
+                                        else setShowProductModal(false);
+                                    }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.t3 }}><X size={16} /></button>
+                                </div>
+
+                                <div style={{ position: 'relative', marginBottom: 12 }}>
+                                    <Search size={14} color={C.t3} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)' }} />
+                                    <input
+                                        type="text"
+                                        placeholder="Buscar producto..."
+                                        value={busquedaProductos}
+                                        onChange={(e) => setBusquedaProductos(e.target.value)}
+                                        style={{
+                                            width: '100%',
+                                            padding: '8px 10px 8px 32px',
+                                            background: C.bg,
+                                            border: `1px solid ${C.br}`,
+                                            borderRadius: 10,
+                                            color: C.t1,
+                                            fontSize: 12,
+                                            outline: 'none',
+                                            fontFamily: C.sans,
+                                        }}
+                                    />
+                                    {busquedaProductos && (
+                                        <button onClick={() => setBusquedaProductos('')} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: C.t3 }}><X size={13} /></button>
+                                    )}
                                 </div>
                                 
                                 {productosDisponibles.length === 0 ? (
                                     <div style={{ textAlign: 'center', color: C.t3, padding: 24, fontSize: 12 }}>No hay productos disponibles en este momento.</div>
+                                ) : productosFiltrados.length === 0 ? (
+                                    <div style={{ textAlign: 'center', color: C.t3, padding: 24, fontSize: 12 }}>No se encontraron productos con esa búsqueda.</div>
                                 ) : (
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                        {productosDisponibles.map(p => {
+                                        {productosFiltrados.map(p => {
                                             const qty = getPendingQty(p.id);
                                             return (
                                                 <div key={p.id}
@@ -352,7 +395,7 @@ export function OrderPanel({
                                         })}
                                     </div>
                                 )}
-                                <button onClick={() => { setHasLocalChanges(true); setShowProductModal(false); }}
+                                <button onClick={() => { setHasLocalChanges(true); setBusquedaProductos(''); setShowProductModal(false); }}
                                     style={{ marginTop: 16, width: '100%', height: 38, borderRadius: 10, background: `linear-gradient(135deg, ${C.gold}, ${C.goldLight})`, border: 'none', color: '#0C0C16', fontWeight: 700, fontFamily: C.sans, fontSize: 12, cursor: 'pointer' }}>
                                     OK — {pendingItems.reduce((s, i) => s + i.qty, 0)} productos
                                 </button>
@@ -366,7 +409,12 @@ export function OrderPanel({
                     {showCobrarModal && order && table && (
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                             style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                            onClick={() => { if (!cobrandoSending) setShowCobrarModal(false); }}>
+                            onClick={() => {
+                                if (!cobrandoSending) {
+                                    if (order && order.items.length > 0) setShowConfirmCobrarModal(true);
+                                    else setShowCobrarModal(false);
+                                }
+                            }}>
                             <motion.div initial={{ scale: 0.92, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.92, y: 20 }}
                                 onClick={e => e.stopPropagation()}
                                 style={{ background: '#1C1C21', border: `1px solid ${C.br}`, borderRadius: 18, padding: 24, width: 440, maxHeight: '80vh', overflowY: 'auto' }}>
@@ -593,6 +641,21 @@ export function OrderPanel({
                     </div>
                 )}
             </div>
+
+            <ConfirmDialog
+                isOpen={showConfirmProductModal}
+                title="¿Cancelar selección?"
+                message="Los productos seleccionados se perderán."
+                onMantener={() => setShowConfirmProductModal(false)}
+                onSalir={() => { setShowConfirmProductModal(false); setShowProductModal(false); }}
+            />
+            <ConfirmDialog
+                isOpen={showConfirmCobrarModal}
+                title="¿Cancelar cobro?"
+                message="Se cancelará el proceso de cobro."
+                onMantener={() => setShowConfirmCobrarModal(false)}
+                onSalir={() => { setShowConfirmCobrarModal(false); setShowCobrarModal(false); }}
+            />
         </div>
     );
 }
