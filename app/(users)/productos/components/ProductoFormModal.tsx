@@ -9,6 +9,7 @@ import type { Producto, Categoria } from './ProductosTab';
 interface Props {
   producto: Producto | null;
   categorias: Categoria[];
+  sucursalId: number | null | undefined;
   onClose: () => void;
 }
 
@@ -23,7 +24,7 @@ interface FormData {
   activo: boolean;
 }
 
-export function ProductoFormModal({ producto, categorias, onClose }: Props) {
+export function ProductoFormModal({ producto, categorias, sucursalId, onClose }: Props) {
   const supabase = createClient();
   const esEdicion = !!producto;
   const [guardando, setGuardando] = useState(false);
@@ -55,7 +56,7 @@ export function ProductoFormModal({ producto, categorias, onClose }: Props) {
     setError('');
     setGuardando(true);
 
-    const payload = {
+    const payload: Record<string, any> = {
       nombre: form.nombre.trim(),
       categoria_id: form.categoria_id,
       precio: precioNum,
@@ -65,6 +66,7 @@ export function ProductoFormModal({ producto, categorias, onClose }: Props) {
       imagen: form.imagen.trim() || null,
       activo: form.activo,
     };
+    if (!esEdicion && sucursalId) payload.sucursal_id = sucursalId;
 
     if (!payload.nombre) {
       setError('El nombre del producto es obligatorio');

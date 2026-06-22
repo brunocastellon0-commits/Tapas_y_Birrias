@@ -2,7 +2,6 @@
 
 import { Suspense, useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { motion, AnimatePresence } from 'motion/react';
 import { createClient } from '@/lib/supabase/client';
 import { Package, Tags, BarChart3 } from 'lucide-react';
 
@@ -12,6 +11,24 @@ import { CategoriasTab } from './components/CategoriasTab';
 import { ReportesTab } from './components/ReportesTab';
 
 const SESSION_ADMIN_KEY = 'tyb_admin_check';
+const CACHE_PRODUCTOS_KEY = 'tyb_productos_cache';
+const CACHE_CATEGORIAS_KEY = 'tyb_categorias_cache';
+
+function readCache<T>(key: string): T | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = sessionStorage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeCache(key: string, data: unknown) {
+  try {
+    sessionStorage.setItem(key, JSON.stringify(data));
+  } catch {}
+}
 
 export default function ProductosPage() {
   return (
@@ -32,10 +49,13 @@ function ProductosContent() {
     return 'inventario';
   });
 
-  const [productos, setProductos] = useState<Producto[]>([]);
-  const [categorias, setCategorias] = useState<Categoria[]>([]);
-  const [cargandoProductos, setCargandoProductos] = useState(true);
-  const [cargandoCategorias, setCargandoCategorias] = useState(true);
+  const cachedProductos = readCache<Producto[]>(CACHE_PRODUCTOS_KEY);
+  const cachedCategorias = readCache<Categoria[]>(CACHE_CATEGORIAS_KEY);
+
+  const [productos, setProductos] = useState<Producto[]>(cachedProductos ?? []);
+  const [categorias, setCategorias] = useState<Categoria[]>(cachedCategorias ?? []);
+  const [cargandoProductos, setCargandoProductos] = useState(!cachedProductos);
+  const [cargandoCategorias, setCargandoCategorias] = useState(!cachedCategorias);
   const [sucursalId, setSucursalId] = useState<number | null | undefined>(undefined);
   const cargarProductosRef = useRef(false);
   const cargarCategoriasRef = useRef(false);
@@ -97,9 +117,9 @@ function ProductosContent() {
     setSucursalId(sid);
   }
 
-  async function cargarProductos(forceLoading = false) {
+  async function cargarProductos() {
     const isFirstLoad = productos.length === 0;
-    if (forceLoading || isFirstLoad) setCargandoProductos(true);
+    if (isFirstLoad) setCargandoProductos(true);
 
     let query = supabase
       .from('productos')
@@ -107,33 +127,33 @@ function ProductosContent() {
       .order('nombre')
       .limit(200);
 
-    if (sucursalId) query = query.eq('sucursal_id', sucursalId);
+    if (sucursalId) query = query.or(`sucursal_id.eq.${sucursalId},sucursal_id.is.null`);
 
     const { data } = await query;
 
     if (data) {
-      setProductos(
-        data.map((p: any) => ({
-          id: p.id,
-          nombre: p.nombre,
-          categoria_id: p.categoria_id,
-          categoria_nombre: p.categoria?.nombre ?? '',
-          precio: p.precio,
-          costo: p.costo,
-          medida: p.medida,
-          stock: p.stock,
-          imagen: p.imagen,
-          activo: p.activo,
-          created_at: p.created_at,
-        }))
-      );
+      const mapped = data.map((p: any) => ({
+        id: p.id,
+        nombre: p.nombre,
+        categoria_id: p.categoria_id,
+        categoria_nombre: p.categoria?.nombre ?? '',
+        precio: p.precio,
+        costo: p.costo,
+        medida: p.medida,
+        stock: p.stock,
+        imagen: p.imagen,
+        activo: p.activo,
+        created_at: p.created_at,
+      }));
+      setProductos(mapped);
+      writeCache(CACHE_PRODUCTOS_KEY, mapped);
     }
     setCargandoProductos(false);
   }
 
-  async function cargarCategorias(forceLoading = false) {
+  async function cargarCategorias() {
     const isFirstLoad = categorias.length === 0;
-    if (forceLoading || isFirstLoad) setCargandoCategorias(true);
+    if (isFirstLoad) setCargandoCategorias(true);
 
     let query = supabase
       .from('categorias_productos')
@@ -144,15 +164,15 @@ function ProductosContent() {
     const { data } = await query;
 
     if (data) {
-      setCategorias(
-        data.map((c: any) => ({
-          id: c.id,
-          nombre: c.nombre,
-          activo: c.activo,
-          orden: c.orden,
-          sucursal_id: c.sucursal_id,
-        }))
-      );
+      const mapped = data.map((c: any) => ({
+        id: c.id,
+        nombre: c.nombre,
+        activo: c.activo,
+        orden: c.orden,
+        sucursal_id: c.sucursal_id,
+      }));
+      setCategorias(mapped);
+      writeCache(CACHE_CATEGORIAS_KEY, mapped);
     }
     setCargandoCategorias(false);
   }
@@ -224,6 +244,7 @@ function ProductosContent() {
               productos={productos}
               categorias={categorias}
               cargando={cargandoProductos}
+              sucursalId={sucursalId}
               onRefresh={refreshProductos}
             />
           )}

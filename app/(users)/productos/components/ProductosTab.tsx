@@ -32,6 +32,7 @@ interface Props {
   productos: Producto[];
   categorias: Categoria[];
   cargando: boolean;
+  sucursalId: number | null | undefined;
   onRefresh: () => void;
 }
 
@@ -59,7 +60,7 @@ const CATEGORY_DOT_COLORS = [
 
 const ITEMS_PER_PAGE = 25;
 
-export function ProductosTab({ productos, categorias, cargando, onRefresh }: Props) {
+export function ProductosTab({ productos, categorias, cargando, sucursalId, onRefresh }: Props) {
   const supabase = createClient();
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [busqueda, setBusqueda] = useState('');
@@ -513,6 +514,7 @@ export function ProductosTab({ productos, categorias, cargando, onRefresh }: Pro
         <ProductoFormModal
           producto={editando}
           categorias={categorias}
+          sucursalId={sucursalId}
           onClose={handleModalClose}
         />
       )}
