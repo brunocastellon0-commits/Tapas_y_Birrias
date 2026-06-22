@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Search, Calendar, X, ChevronDown, ChevronRight, Banknote,
-  QrCode, CreditCard, User, Hash, Receipt, Circle, Lock,
+  QrCode, CreditCard, User, Hash, Receipt, Circle, Lock, ShoppingBag, Loader2,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { C } from './tokens';
@@ -81,6 +81,22 @@ function CorteTable({ corte }: { corte: CorteDetalle[] }) {
   );
 }
 
+interface VentaItem {
+  name: string;
+  qty: number;
+  price: number;
+}
+
+interface VentaRecord {
+  id: number;
+  comanda_id: number;
+  mesa: string;
+  metodo: string;
+  monto: number;
+  created_at: string;
+  items: VentaItem[];
+}
+
 export default function CajaHistorial() {
   const supabase = createClient();
   const [records, setRecords] = useState<CajaRecord[]>([]);
@@ -90,27 +106,29 @@ export default function CajaHistorial() {
   const [dateFilter, setDateFilter] = useState<'hoy' | 'semana' | 'mes' | 'todas'>('todas');
   const [statusFilter, setStatusFilter] = useState<'todas' | 'abierta' | 'cerrada'>('todas');
   const [search, setSearch] = useState('');
+  const [ventas, setVentas] = useState<VentaRecord[]>([]);
+  const [cargandoVentas, setCargandoVentas] = useState(false);
 
   useEffect(() => {
     cargar();
     verificarAdmin();
   }, []);
 
+  const PAYMENT_LABELS: Record<string, string> = {
+    efectivo: 'Efectivo',
+    tarjeta: 'Tarjeta',
+    qr: 'QR',
+  };
+
   async function verificarAdmin() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     const { data: usuario } = await supabase
       .from('usuarios')
-      .select('cargo_id')
+      .select('cargos!inner(nombre)')
       .eq('id', user.id)
       .single();
-    if (!usuario?.cargo_id) return;
-    const { data: cargo } = await supabase
-      .from('cargos')
-      .select('nombre')
-      .eq('id', usuario.cargo_id)
-      .single();
-    setIsAdmin(cargo?.nombre === 'Administrador');
+    setIsAdmin((usuario as any)?.cargos?.nombre === 'Administrador');
   }
 
   async function cargar() {
@@ -118,25 +136,16 @@ export default function CajaHistorial() {
 
     const { data: aperturas, error } = await supabase
       .from('aperturas_caja')
-      .select('*, usuario:usuario_id(nombre, apellido)')
+      .select('*, usuario:usuario_id(nombre, apellido), cierres:cierres_caja(*, usuario:usuario_id(nombre, apellido))')
       .order('created_at', { ascending: false })
       .limit(100);
 
     if (error) { setLoading(false); return; }
     if (!aperturas) { setLoading(false); return; }
 
-    const recordsData: CajaRecord[] = [];
-
-    for (const ap of aperturas) {
-      const { data: cierres } = await supabase
-        .from('cierres_caja')
-        .select('*, usuario:usuario_id(nombre, apellido)')
-        .eq('apertura_id', ap.id)
-        .limit(1);
-
-      const cierre = cierres?.[0] ?? null;
-
-      recordsData.push({
+    const recordsData: CajaRecord[] = aperturas.map((ap: any) => {
+      const cierre = ap.cierres?.[0] ?? null;
+      return {
         id: ap.id,
         apertura: {
           id: ap.id,
@@ -159,11 +168,61 @@ export default function CajaHistorial() {
             }
           : null,
         estado: cierre ? 'cerrada' : 'abierta',
-      });
-    }
+      };
+    });
 
     setRecords(recordsData);
     setLoading(false);
+  }
+
+  useEffect(() => {
+    if (!selected || !isAdmin) {
+      setVentas([]);
+      return;
+    }
+    cargarVentas();
+  }, [selected?.id]);
+
+  async function cargarVentas() {
+    if (!selected) return;
+    setCargandoVentas(true);
+
+    const aperturaDate = selected.apertura.created_at;
+    const cierreDate = selected.cierre?.created_at ?? new Date().toISOString();
+
+    const { data: pagos } = await supabase
+      .from('pagos')
+      .select(`
+        id, comanda_id, metodo, monto, created_at,
+        comanda:comanda_id(
+          mesa_id,
+          mesa:mesa_id(numero),
+          items:comanda_items(nombre_producto, precio_unitario, cantidad)
+        )
+      `)
+      .gte('created_at', aperturaDate)
+      .lte('created_at', cierreDate)
+      .order('created_at', { ascending: true });
+
+    if (pagos) {
+      setVentas(
+        pagos.map((p: any) => ({
+          id: p.id,
+          comanda_id: p.comanda_id,
+          mesa: p.comanda?.mesa?.numero ?? '—',
+          metodo: p.metodo,
+          monto: Number(p.monto),
+          created_at: p.created_at,
+          items: (p.comanda?.items ?? []).map((i: any) => ({
+            name: i.nombre_producto,
+            qty: i.cantidad,
+            price: Number(i.precio_unitario),
+          })),
+        }))
+      );
+    }
+
+    setCargandoVentas(false);
   }
 
   const filtered = useMemo(() => {
@@ -512,6 +571,71 @@ export default function CajaHistorial() {
                 <p style={{ color: C.t2, fontSize: '0.82rem', margin: 0 }}>{selected.cierre.observaciones}</p>
               </div>
             )}
+
+            {/* Ventas del Turno */}
+            <div
+              className="p-4 rounded-xl"
+              style={{ backgroundColor: 'rgba(255,255,255,0.03)', border: `1px solid ${C.br}` }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                <ShoppingBag size={14} color={C.goldLight} />
+                <span style={{ color: C.t3, fontSize: '0.7rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600 }}>
+                  Ventas del Turno ({ventas.length})
+                </span>
+              </div>
+              {cargandoVentas ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: C.t3, fontSize: 11, padding: '8px 0' }}>
+                  <Loader2 size={12} className="animate-spin" /> Cargando ventas...
+                </div>
+              ) : ventas.length === 0 ? (
+                <span style={{ fontSize: 11, color: C.t3 }}>Sin ventas en este turno</span>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {ventas.map((v) => (
+                    <div
+                      key={v.id}
+                      style={{
+                        padding: '6px 8px',
+                        borderRadius: 8,
+                        background: 'rgba(255,255,255,0.02)',
+                        border: `1px solid rgba(255,255,255,0.04)`,
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <span style={{ color: C.gold, fontSize: 10, fontWeight: 700 }}>
+                            #{String(v.comanda_id).padStart(4, '0')}
+                          </span>
+                          <span style={{ color: C.t3, fontSize: 10 }}>· Mesa {v.mesa}</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <span style={{
+                            fontSize: 9, padding: '1px 5px', borderRadius: 4,
+                            backgroundColor: v.metodo === 'efectivo' ? 'rgba(74,222,128,0.12)' : v.metodo === 'qr' ? 'rgba(167,139,250,0.12)' : 'rgba(56,189,248,0.12)',
+                            color: v.metodo === 'efectivo' ? '#4ADE80' : v.metodo === 'qr' ? '#A78BFA' : '#38BDF8',
+                            fontWeight: 600,
+                          }}>
+                            {PAYMENT_LABELS[v.metodo] ?? v.metodo}
+                          </span>
+                          <span style={{ color: C.t1, fontSize: 11, fontWeight: 700 }}>
+                            {v.monto.toFixed(2)}€
+                          </span>
+                        </div>
+                      </div>
+                      {v.items.length > 0 && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+                          {v.items.map((item, idx) => (
+                            <span key={idx} style={{ fontSize: 9, color: C.t3, background: 'rgba(255,255,255,0.03)', padding: '1px 5px', borderRadius: 3 }}>
+                              {item.qty}x {item.name}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

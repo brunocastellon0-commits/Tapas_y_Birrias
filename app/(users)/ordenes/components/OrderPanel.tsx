@@ -103,8 +103,7 @@ export function OrderPanel({
 
     const combinedItems = order ? [...order.items, ...pendingItems] : pendingItems;
     const subtotal = combinedItems.reduce((s, i) => s + i.price * i.qty, 0);
-    const tax = Math.round(subtotal * 0.105);
-    const total = subtotal + tax;
+    const total = subtotal;
     const stageIndex = order ? STAGES.findIndex(s => s.id === order.stage) : -1;
 
     // Resetea los items pendientes si cambias de mesa
@@ -414,10 +413,7 @@ export function OrderPanel({
                                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontFamily: C.sans, color: C.t3, marginBottom: 4 }}>
                                         <span>Subtotal</span><span>${subtotal.toLocaleString()}</span>
                                     </div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontFamily: C.sans, color: C.t3, marginBottom: 4 }}>
-                                        <span>IVA (16%)</span><span>${tax.toLocaleString()}</span>
-                                    </div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 8 }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 4 }}>
                                         <span style={{ fontFamily: C.serif, fontSize: 15, fontWeight: 600, color: C.t1 }}>Total</span>
                                         <span style={{ fontFamily: C.serif, fontSize: 24, fontWeight: 700, color: C.goldLight }}>${total.toLocaleString()}</span>
                                     </div>
@@ -529,14 +525,9 @@ export function OrderPanel({
                         </div>
 
                         {/* Breakdown */}
-                        {[
-                            { label: 'Subtotal', val: `$${subtotal.toLocaleString()}` },
-                            { label: 'IVA (16%)', val: `$${tax.toLocaleString()}` },
-                        ].map(({ label, val }) => (
-                            <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontFamily: C.sans, color: C.t3, marginBottom: 5 }}>
-                                <span>{label}</span><span>{val}</span>
-                            </div>
-                        ))}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontFamily: C.sans, color: C.t3, marginBottom: 5 }}>
+                            <span>Subtotal</span><span>${subtotal.toLocaleString()}</span>
+                        </div>
 
                         <div style={{ height: 1, background: C.br, margin: '8px 0' }} />
 

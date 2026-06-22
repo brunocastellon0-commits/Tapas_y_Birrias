@@ -90,10 +90,11 @@ function ServicioContent() {
       .from('comandas')
       .select(
         `
-        id, mesa_id, total, created_at, etapa,
+        id, mesa_id, total, created_at, etapa, cubiertos,
         mesa:mesa_id(numero),
         usuario:usuario_id(nombre, apellido),
-        pago:pagos(metodo)
+        pago:pagos(metodo),
+        items:comanda_items(id, nombre_producto, precio_unitario, cantidad)
       `
       )
       .in('etapa', ['cerrada', 'anulada'])
@@ -103,21 +104,29 @@ function ServicioContent() {
     if (error) console.error('cargarHistorial error:', error);
     if (comandas) {
       setHistorial(
-        comandas.map((c: any) => ({
-          id: `#${String(c.id).padStart(4, '0')}`,
-          tableNumber: c.mesa?.numero ?? '',
-          date: new Date(c.created_at).toLocaleDateString('es-ES'),
-          time: new Date(c.created_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
-          waiter: c.usuario ? `${c.usuario.nombre} ${c.usuario.apellido}` : '',
-          paymentMethod: c.pago?.[0]?.metodo === 'qr' ? 'qr' : c.pago?.[0]?.metodo === 'tarjeta' ? 'tarjeta' : 'efectivo',
-          status: c.etapa === 'anulada' ? 'anulado' : 'pagado',
-          covers: 0,
-          items: [],
-          subtotal: 0,
-          tax: 0,
-          discount: 0,
-          total: c.total,
-        }))
+        comandas.map((c: any) => {
+          const orderItems = (c.items ?? []).map((i: any) => ({
+            name: i.nombre_producto,
+            qty: i.cantidad,
+            price: Number(i.precio_unitario),
+          }));
+          const subtotal = orderItems.reduce((s: number, i: any) => s + i.price * i.qty, 0);
+          return {
+            id: `#${String(c.id).padStart(4, '0')}`,
+            tableNumber: c.mesa?.numero ?? '',
+            date: new Date(c.created_at).toLocaleDateString('es-ES'),
+            time: new Date(c.created_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
+            waiter: c.usuario ? `${c.usuario.nombre} ${c.usuario.apellido}` : '',
+            paymentMethod: c.pago?.[0]?.metodo === 'qr' ? 'qr' : c.pago?.[0]?.metodo === 'tarjeta' ? 'tarjeta' : 'efectivo',
+            status: c.etapa === 'anulada' ? 'anulado' : 'pagado',
+            covers: c.cubiertos ?? 0,
+            items: orderItems,
+            subtotal,
+            tax: 0,
+            discount: 0,
+            total: c.total,
+          };
+        })
       );
     }
   }
@@ -174,6 +183,10 @@ function ServicioContent() {
 
   const handleAbrirMesa = useCallback(
     async (tableId: string | number) => {
+      if (!cajaAbierta) {
+        alert('Debes abrir la caja antes de tomar un pedido');
+        return;
+      }
       const { data: user } = await supabase.auth.getUser();
       if (!user.user) return;
 
@@ -199,11 +212,15 @@ function ServicioContent() {
         cargarComandasActivas();
       }
     },
-    [supabase]
+    [supabase, cajaAbierta]
   );
 
   const handleEnviarCocina = useCallback(
     async (tableId: string | number, items: OrderItem[], cubiertos: number) => {
+      if (!cajaAbierta) {
+        alert('La caja está cerrada. Ábrela antes de enviar pedidos a cocina');
+        return;
+      }
       const { data: user } = await supabase.auth.getUser();
 
       let comandaId: number;
@@ -245,10 +262,9 @@ function ServicioContent() {
       }
 
       const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
-      const tax = Math.round(subtotal * 0.105);
       await supabase
         .from('comandas')
-        .update({ etapa: 'en-cocina', total: subtotal + tax, cubiertos })
+        .update({ etapa: 'en-cocina', total: subtotal, cubiertos })
         .eq('id', comandaId);
 
       setCurrentOrder((prev: Order | null) => ({
@@ -260,14 +276,17 @@ function ServicioContent() {
 
       cargarComandasActivas();
     },
-    [supabase, currentOrder]
+    [supabase, currentOrder, cajaAbierta]
   );
 
   const handleCobrar = useCallback(
     async (tableId: string | number, orderId: string | number, total: number, paymentMethod: string) => {
+      if (!cajaAbierta) {
+        alert('La caja está cerrada. Ábrela antes de cobrar');
+        return;
+      }
       const { data: user } = await supabase.auth.getUser();
       if (!user.user) return;
-
       const methodMap: Record<string, 'efectivo' | 'tarjeta' | 'qr'> = {
         cash: 'efectivo',
         card: 'tarjeta',
@@ -294,7 +313,7 @@ function ServicioContent() {
       cargarComandasActivas();
       cargarHistorial();
     },
-    [supabase]
+    [supabase, cajaAbierta]
   );
 
   const handleChangeStage = useCallback(

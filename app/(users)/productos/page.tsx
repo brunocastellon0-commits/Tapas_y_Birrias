@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState, useEffect, useCallback } from 'react';
+import { Suspense, useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'motion/react';
 import { createClient } from '@/lib/supabase/client';
@@ -10,6 +10,8 @@ import { DashboardSidebar } from '@/app/components/layout/sidebar';
 import { ProductosTab, Producto, Categoria } from './components/ProductosTab';
 import { CategoriasTab } from './components/CategoriasTab';
 import { ReportesTab } from './components/ReportesTab';
+
+const SESSION_ADMIN_KEY = 'tyb_admin_check';
 
 export default function ProductosPage() {
   return (
@@ -35,6 +37,8 @@ function ProductosContent() {
   const [cargandoProductos, setCargandoProductos] = useState(true);
   const [cargandoCategorias, setCargandoCategorias] = useState(true);
   const [sucursalId, setSucursalId] = useState<number | null | undefined>(undefined);
+  const cargarProductosRef = useRef(false);
+  const cargarCategoriasRef = useRef(false);
 
   useEffect(() => {
     verificarAdmin();
@@ -42,43 +46,69 @@ function ProductosContent() {
 
   useEffect(() => {
     if (sucursalId === undefined) return;
-    cargarProductos();
-    cargarCategorias();
+    if (!cargarProductosRef.current) {
+      cargarProductosRef.current = true;
+      cargarProductos();
+    }
+    if (!cargarCategoriasRef.current) {
+      cargarCategoriasRef.current = true;
+      cargarCategorias();
+    }
   }, [sucursalId]);
 
   async function verificarAdmin() {
+    const cached = sessionStorage.getItem(SESSION_ADMIN_KEY);
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        if (parsed.expiry > Date.now()) {
+          setSucursalId(parsed.sucursalId);
+          return;
+        }
+      } catch {}
+    }
+
     const { data: { user } } = await supabase.auth.getUser();
     if (!user?.id) { router.push('/login'); return; }
 
     const { data: usuario } = await supabase
       .from('usuarios')
-      .select('cargo_id, sucursal_id')
+      .select('cargo_id, sucursal_id, cargos!inner(nombre)')
       .eq('id', user.id)
       .single();
 
-    if (usuario?.cargo_id) {
-      const { data: cargo } = await supabase
-        .from('cargos')
-        .select('nombre')
-        .eq('id', usuario.cargo_id)
-        .single();
-
-      if (cargo?.nombre !== 'Administrador') {
-        router.push('/dashboard');
-        return;
-      }
+    if (!usuario) {
+      router.push('/login');
+      return;
     }
 
-    setSucursalId(usuario?.sucursal_id ?? null);
+    const esAdmin = (usuario as any).cargos?.nombre === 'Administrador';
+    if (!esAdmin) {
+      router.push('/dashboard');
+      return;
+    }
+
+    const sid = (usuario as any).sucursal_id ?? null;
+    sessionStorage.setItem(SESSION_ADMIN_KEY, JSON.stringify({
+      sucursalId: sid,
+      expiry: Date.now() + 30 * 60 * 1000,
+    }));
+
+    setSucursalId(sid);
   }
 
-  async function cargarProductos() {
-    setCargandoProductos(true);
+  async function cargarProductos(forceLoading = false) {
+    const isFirstLoad = productos.length === 0;
+    if (forceLoading || isFirstLoad) setCargandoProductos(true);
+
     let query = supabase
       .from('productos')
       .select('*, categoria:categoria_id(nombre)')
-      .order('nombre');
-    
+      .order('nombre')
+      .limit(200);
+
+    if (sucursalId) query = query.eq('sucursal_id', sucursalId);
+
     const { data } = await query;
 
     if (data) {
@@ -101,12 +131,15 @@ function ProductosContent() {
     setCargandoProductos(false);
   }
 
-  async function cargarCategorias() {
-    setCargandoCategorias(true);
+  async function cargarCategorias(forceLoading = false) {
+    const isFirstLoad = categorias.length === 0;
+    if (forceLoading || isFirstLoad) setCargandoCategorias(true);
+
     let query = supabase
       .from('categorias_productos')
       .select('*')
-      .order('orden', { ascending: true, nullsFirst: false });
+      .order('orden', { ascending: true, nullsFirst: false })
+      .limit(50);
     if (sucursalId) query = query.eq('sucursal_id', sucursalId);
     const { data } = await query;
 
@@ -124,8 +157,14 @@ function ProductosContent() {
     setCargandoCategorias(false);
   }
 
-  const refreshProductos = useCallback(() => { cargarProductos(); }, [sucursalId]);
-  const refreshCategorias = useCallback(() => { cargarCategorias(); }, [sucursalId]);
+  const refreshProductos = useCallback(() => {
+    cargarProductosRef.current = true;
+    cargarProductos();
+  }, [sucursalId]);
+  const refreshCategorias = useCallback(() => {
+    cargarCategoriasRef.current = true;
+    cargarCategorias();
+  }, [sucursalId]);
 
   return (
     <div className="min-h-screen bg-[#0C0E14]">
@@ -180,41 +219,31 @@ function ProductosContent() {
         </header>
 
         <main className="flex-1 overflow-y-auto p-6">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeTab}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -12 }}
-              transition={{ duration: 0.15 }}
-            >
-              {activeTab === 'inventario' && (
-                <ProductosTab
-                  productos={productos}
-                  categorias={categorias}
-                  cargando={cargandoProductos}
-                  onRefresh={refreshProductos}
-                />
-              )}
+          {activeTab === 'inventario' && (
+            <ProductosTab
+              productos={productos}
+              categorias={categorias}
+              cargando={cargandoProductos}
+              onRefresh={refreshProductos}
+            />
+          )}
 
-              {activeTab === 'categorias' && (
-                <CategoriasTab
-                  categorias={categorias}
-                  productos={productos}
-                  sucursalId={sucursalId}
-                  cargando={cargandoCategorias}
-                  onRefresh={refreshCategorias}
-                />
-              )}
+          {activeTab === 'categorias' && (
+            <CategoriasTab
+              categorias={categorias}
+              productos={productos}
+              sucursalId={sucursalId}
+              cargando={cargandoCategorias}
+              onRefresh={refreshCategorias}
+            />
+          )}
 
-              {activeTab === 'reportes' && (
-                <ReportesTab
-                  productos={productos}
-                  categorias={categorias}
-                />
-              )}
-            </motion.div>
-          </AnimatePresence>
+          {activeTab === 'reportes' && (
+            <ReportesTab
+              productos={productos}
+              categorias={categorias}
+            />
+          )}
         </main>
       </div>
     </div>

@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import {
     Search, Calendar, X, ChevronDown, CreditCard,
     Banknote, QrCode, CheckCircle2, XCircle, Clock, ChevronRight,
-    User, Hash, Receipt, Percent, Minus, LucideIcon
+    User, Hash, Receipt, Minus, LucideIcon
 } from 'lucide-react';
 import { C } from './tokens'; // ← Consumiendo los tokens globales
 
@@ -513,7 +513,6 @@ export function OrdersHistory({
                             <div style={{ borderBottom: `1px solid ${C.br}`, padding: '0' }}>
                                 {[
                                     { label: 'Subtotal', value: selectedOrder.subtotal, icon: Receipt, muted: false },
-                                    { label: 'IVA (10.5%)', value: selectedOrder.tax, icon: Percent, muted: true },
                                     ...(selectedOrder.discount > 0
                                         ? [{ label: 'Descuento aplicado', value: -selectedOrder.discount, icon: Minus, muted: true }]
                                         : []),
