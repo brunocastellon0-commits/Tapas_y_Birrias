@@ -284,7 +284,8 @@ export default function RegistrarEmpleadoPage() {
                 <div>
                   <label className={labelClass}>Tarifa por Hora *</label>
                   <input type="number" step="0.01" name="tarifa_hora" value={formData.tarifa_hora} onChange={handleChange}
-                    className={`${inputClass} ${errors.tarifa_hora ? errorClass : ''}`} placeholder="0.00" />
+                    onFocus={(e) => e.target.select()}
+                    className={`hide-spin-buttons ${inputClass} ${errors.tarifa_hora ? errorClass : ''}`} placeholder="0.00" />
                   {errors.tarifa_hora && <p className="text-red-400 text-xs mt-1">{errors.tarifa_hora}</p>}
                 </div>
 

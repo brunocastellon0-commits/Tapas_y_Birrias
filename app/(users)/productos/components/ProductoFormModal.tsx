@@ -219,7 +219,8 @@ export function ProductoFormModal({ producto, categorias, sucursalId, onClose }:
                   step="0.01"
                   value={form.precio}
                   onChange={(e) => handleChange('precio', e.target.value)}
-                  className="w-full bg-[#07080B] border border-[rgba(6,182,212,0.08)] rounded-lg px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-500/50 transition-colors"
+                  onFocus={(e) => e.target.select()}
+                  className="hide-spin-buttons w-full bg-[#07080B] border border-[rgba(6,182,212,0.08)] rounded-lg px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-500/50 transition-colors"
                 />
               </div>
               <div>
@@ -230,7 +231,8 @@ export function ProductoFormModal({ producto, categorias, sucursalId, onClose }:
                   step="0.01"
                   value={form.costo}
                   onChange={(e) => handleChange('costo', e.target.value)}
-                  className="w-full bg-[#07080B] border border-[rgba(6,182,212,0.08)] rounded-lg px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-500/50 transition-colors"
+                  onFocus={(e) => e.target.select()}
+                  className="hide-spin-buttons w-full bg-[#07080B] border border-[rgba(6,182,212,0.08)] rounded-lg px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-500/50 transition-colors"
                 />
               </div>
             </div>
@@ -273,7 +275,8 @@ export function ProductoFormModal({ producto, categorias, sucursalId, onClose }:
                   step="0.01"
                   value={form.stock}
                   onChange={(e) => handleChange('stock', e.target.value)}
-                  className="w-full bg-[#07080B] border border-[rgba(6,182,212,0.08)] rounded-lg px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-500/50 transition-colors"
+                  onFocus={(e) => e.target.select()}
+                  className="hide-spin-buttons w-full bg-[#07080B] border border-[rgba(6,182,212,0.08)] rounded-lg px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-500/50 transition-colors"
                 />
               </div>
             </div>

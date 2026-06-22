@@ -377,6 +377,8 @@ export default function CajaPanel({ isOpen, onClose }: CajaPanelProps) {
                         min={0}
                         value={item.cantidad}
                         onChange={(e) => actualizarCorte(idx, parseInt(e.target.value) || 0)}
+                        onFocus={(e) => e.target.select()}
+                        className="hide-spin-buttons"
                         style={{
                           width: 40,
                           padding: '3px 6px',
@@ -426,6 +428,8 @@ export default function CajaPanel({ isOpen, onClose }: CajaPanelProps) {
                             step={0.01}
                             value={val}
                             onChange={(e) => setter(parseFloat(e.target.value) || 0)}
+                            onFocus={(e) => e.target.select()}
+                            className="hide-spin-buttons"
                             style={{
                               flex: 1,
                               padding: '4px 8px',

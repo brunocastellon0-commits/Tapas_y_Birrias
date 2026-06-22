@@ -126,11 +126,11 @@ export function OrderPanel({
         setShowProductModal(true);
     }
 
-    function setPendingQty(productId: string | number, qty: number) {
+    function handleIncrement(productId: string | number) {
+        setHasLocalChanges(true);
         setPendingItems(prev => {
-            if (qty <= 0) return prev.filter(i => i.id_producto !== productId);
             const ex = prev.find(i => i.id_producto === productId);
-            if (ex) return prev.map(i => i.id_producto === productId ? { ...i, qty } : i);
+            if (ex) return prev.map(i => i.id_producto === productId ? { ...i, qty: i.qty + 1 } : i);
             const prod = productosDisponibles.find(p => p.id === productId);
             if (!prod) return prev;
             return [...prev, {
@@ -139,10 +139,20 @@ export function OrderPanel({
                 name: prod.name,
                 category: '',
                 price: typeof prod.costo === 'string' ? parseFloat(prod.costo) : prod.costo,
-                qty,
+                qty: 1,
                 image: '',
                 notes: []
             }];
+        });
+    }
+
+    function handleDecrement(productId: string | number) {
+        setHasLocalChanges(true);
+        setPendingItems(prev => {
+            const ex = prev.find(i => i.id_producto === productId);
+            if (!ex) return prev;
+            if (ex.qty <= 1) return prev.filter(i => i.id_producto !== productId);
+            return prev.map(i => i.id_producto === productId ? { ...i, qty: i.qty - 1 } : i);
         });
     }
 
@@ -150,7 +160,11 @@ export function OrderPanel({
         setHasLocalChanges(true);
         if (itemId.startsWith('new-')) {
             const productId = itemId.replace('new-', '');
-            setPendingQty(productId, qty);
+            if (qty <= 0) {
+                setPendingItems(prev => prev.filter(i => i.id_producto !== productId));
+            } else {
+                setPendingItems(prev => prev.map(i => i.id_producto === productId ? { ...i, qty } : i));
+            }
         } else {
             onUpdateQty(itemId, qty);
         }
@@ -380,12 +394,12 @@ export function OrderPanel({
                                                         <div style={{ fontSize: 10, color: C.t3 }}>{p.medida} · ${parseFloat(p.costo.toString()).toLocaleString()}</div>
                                                     </div>
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                                        <button onClick={() => { setHasLocalChanges(true); setPendingQty(p.id, qty - 1); }}
+                                                        <button onClick={() => handleDecrement(p.id)}
                                                             style={{ width: 26, height: 26, borderRadius: 6, background: C.bg, border: `1px solid ${C.br2}`, color: C.t2, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', outline: 'none' }}>
                                                             <Minus size={11} strokeWidth={2.5} />
                                                         </button>
                                                         <span style={{ fontSize: 14, fontWeight: 700, color: C.goldLight, minWidth: 22, textAlign: 'center' }}>{qty}</span>
-                                                        <button onClick={() => { setHasLocalChanges(true); setPendingQty(p.id, qty + 1); }}
+                                                        <button onClick={() => handleIncrement(p.id)}
                                                             style={{ width: 26, height: 26, borderRadius: 6, background: C.goldDim, border: `1px solid ${C.goldBorder}`, color: C.goldLight, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', outline: 'none' }}>
                                                             <Plus size={11} strokeWidth={2.5} />
                                                         </button>
@@ -545,15 +559,27 @@ export function OrderPanel({
 
                                             {/* Qty Controls */}
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
-                                                <button onClick={() => handleUpdateQtyLocal(item.id, item.qty - 1)} style={{ width: 22, height: 22, borderRadius: 6, background: C.bg, border: `1px solid ${C.br2}`, color: C.t2, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', outline: 'none' }}>
+                                                <button onClick={() => {
+                                                    if (item.id.startsWith('new-')) handleDecrement(item.id_producto);
+                                                    else handleUpdateQtyLocal(item.id, item.qty - 1);
+                                                }} style={{ width: 22, height: 22, borderRadius: 6, background: C.bg, border: `1px solid ${C.br2}`, color: C.t2, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', outline: 'none' }}>
                                                     <Minus size={10} strokeWidth={2.5} />
                                                 </button>
                                                 <span style={{ fontSize: 13, fontFamily: C.sans, fontWeight: 700, color: C.t1, minWidth: 18, textAlign: 'center' }}>{item.qty}</span>
-                                                <button onClick={() => handleUpdateQtyLocal(item.id, item.qty + 1)} style={{ width: 22, height: 22, borderRadius: 6, background: C.goldDim, border: `1px solid ${C.goldBorder}`, color: C.goldLight, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', outline: 'none' }}>
+                                                <button onClick={() => {
+                                                    if (item.id.startsWith('new-')) handleIncrement(item.id_producto);
+                                                    else handleUpdateQtyLocal(item.id, item.qty + 1);
+                                                }} style={{ width: 22, height: 22, borderRadius: 6, background: C.goldDim, border: `1px solid ${C.goldBorder}`, color: C.goldLight, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', outline: 'none' }}>
                                                     <Plus size={10} strokeWidth={2.5} />
                                                 </button>
                                                 <span style={{ fontSize: 10, color: C.t3, fontFamily: C.sans, marginLeft: 'auto' }}>${item.price.toLocaleString()} c/u</span>
-                                                <button onClick={() => handleUpdateQtyLocal(item.id, 0)} style={{ width: 20, height: 20, borderRadius: 5, background: 'transparent', border: 'none', color: C.t3, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                <button onClick={() => {
+                                                    if (item.id.startsWith('new-')) {
+                                                        setPendingItems(prev => prev.filter(i => i.id_producto !== item.id_producto));
+                                                    } else {
+                                                        handleUpdateQtyLocal(item.id, 0);
+                                                    }
+                                                }} style={{ width: 20, height: 20, borderRadius: 5, background: 'transparent', border: 'none', color: C.t3, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                                     <X size={11} strokeWidth={2} />
                                                 </button>
                                             </div>
